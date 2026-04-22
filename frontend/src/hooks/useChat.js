@@ -15,14 +15,7 @@ export function useChat() {
 
     try {
       const data = await sendChatMessage(text);
-      // Safe access — NEVER destructure directly
-      const response = data?.response ?? {
-        summary: 'No response received. Please try again.',
-        steps: [],
-        bullets: [],
-        examples: [],
-        relatedTopics: [],
-      };
+      const response = data?.reply ?? 'No response received. Please try again.';
       const cached = data?.cached ?? false;
       const fallback = data?.fallback ?? false;
       const source = data?.source || '';

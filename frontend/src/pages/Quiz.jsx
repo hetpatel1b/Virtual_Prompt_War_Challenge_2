@@ -118,8 +118,7 @@ export default function Quiz() {
                     return;
                   }
 
-                  console.log("Submitting answers:", quiz.answers);
-                  quiz.submitQuiz();
+                  quiz.nextQuestion();
                 }}
               >
                 Next Question

@@ -49,10 +49,7 @@ async function sendMessage(req, res, next) {
       return res.json({
         success: true,
         data: {
-          response: cached,
-          cached: true,
-          fallback: false,
-          source: cached.source || 'cache',
+          reply: cached,
         },
       });
     }
@@ -80,21 +77,14 @@ async function sendMessage(req, res, next) {
     firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, response).catch(() => { });
 
     // 5. Return response
-    const responseSource = response?.source || (config.isDemoMode ? 'demo' : 'gemini');
-
-    // Clean internal flags before sending to client
-    const reply = { ...response };
-    delete reply.source;
-
     res.json({
       success: true,
       data: {
-        reply,
-        cached: false,
-        source: responseSource,
+        reply: response,
       },
     });
   } catch (err) {
+    console.error(err);
     const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
     reqLogger.error('sendMessage failed', {
       error: err.message,
@@ -130,7 +120,7 @@ async function simulateScenario(req, res, next) {
       reqLogger.info('Returning cached scenario response');
       return res.json({
         success: true,
-        data: { response: cached, cached: true, fallback: false },
+        data: { reply: cached },
       });
     }
 
@@ -149,16 +139,12 @@ async function simulateScenario(req, res, next) {
     cacheService.set(cacheKey, response);
 
     // 4. Return
-    const scenarioSource = response?.source || (config.isDemoMode ? 'demo' : 'gemini');
-
-    const reply = { ...response };
-    delete reply.source;
-
     res.json({
       success: true,
-      data: { reply, cached: false, source: scenarioSource },
+      data: { reply: response },
     });
   } catch (err) {
+    console.error(err);
     const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
     reqLogger.error('simulateScenario failed', {
       error: err.message,

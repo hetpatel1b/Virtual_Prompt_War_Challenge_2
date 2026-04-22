@@ -16,7 +16,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const config = require('../config');
 const logger = require('../config/logger');
-const demoService = require('./demo.service');
 
 /* ── Singleton client ─────────────────────────────────────────── */
 
@@ -30,8 +29,8 @@ function getClient() {
   if (ai) return ai;
 
   if (!config.gemini.apiKey) {
-    logger.warn('Gemini API key not configured — using demo mode');
-    return null;
+    logger.error('Gemini API key not configured');
+    throw new Error('Gemini API key not configured');
   }
 
   try {
@@ -102,46 +101,6 @@ RULES:
 4. Stay factual and neutral — present what WOULD happen, not what SHOULD happen
 5. If the scenario is unrealistic, still explain the constitutional process while noting its improbability`;
 
-/* ── Response parsing ─────────────────────────────────────────── */
-
-/**
- * Parse JSON from Gemini's response text.
- * Handles markdown code fences and malformed JSON gracefully.
- *
- * @param {string} text - Raw response text from Gemini
- * @returns {object} Parsed JSON or fallback structure
- */
-function parseAIResponse(text) {
-  if (!text || typeof text !== 'string') {
-    return { summary: 'No response received.', steps: [], bullets: [], examples: [], relatedTopics: [] };
-  }
-
-  // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
-  let cleaned = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    // Fallback: wrap raw text in structured format
-    logger.debug('Failed to parse Gemini JSON response — using text fallback');
-    return {
-      summary: cleaned.split('\n')[0] || cleaned.slice(0, 200),
-      steps: [],
-      bullets: cleaned
-        .split('\n')
-        .filter((line) => line.trim().startsWith('-') || line.trim().startsWith('•'))
-        .map((line) => line.replace(/^[-•]\s*/, '').trim())
-        .slice(0, 6),
-      examples: [],
-      relatedTopics: [],
-      rawText: cleaned,
-    };
-  }
-}
 
 /* ── Core generation with retry ───────────────────────────────── */
 
@@ -177,11 +136,6 @@ function isRetryable(err) {
 async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
   const client = getClient();
 
-  if (!client) {
-    // No API key → demo mode
-    return { ...demoService.getResponse(prompt), source: 'demo' };
-  }
-
   let lastError;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -200,8 +154,7 @@ async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
       });
 
       // ── Extract text from response ──
-      // @google/genai returns result.text directly (string property, not a function)
-      const responseText = result.text;
+      const responseText = result.text || (result.response && typeof result.response.text === 'function' ? result.response.text() : '');
 
       if (!responseText) {
         throw new Error('Empty response from Gemini');
@@ -215,7 +168,7 @@ async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
         attempt,
       });
 
-      return { ...parseAIResponse(responseText), source: 'gemini' };
+      return responseText;
 
     } catch (err) {
       lastError = err;
@@ -279,5 +232,4 @@ async function generateScenarioResponse(scenario) {
 module.exports = {
   generateElectionResponse,
   generateScenarioResponse,
-  parseAIResponse,
 };
