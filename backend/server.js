@@ -1,16 +1,5 @@
 /**
- * ElectionGuide AI — Express Server
- *
- * Production-grade Express application with:
- *   - Helmet security headers (CSP)
- *   - CORS with origin whitelist
- *   - Morgan HTTP logging via Winston
- *   - Request ID correlation
- *   - Rate limiting
- *   - Structured error handling
- *   - Graceful shutdown
- *
- * App factory pattern: exports the app for testing.
+ * ElectionGuide AI — Express Server (Cloud Run Safe)
  */
 
 const express = require('express');
@@ -25,13 +14,11 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const routes = require('./routes');
 
-// ─── Create Express App ────────────────────────────────
-
 const app = express();
 
-// ─── Security Middleware ────────────────────────────────
+// ─── SECURITY ───────────────────────────────────────────
 
-// Helmet — secure HTTP headers
+// Helmet
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -48,32 +35,33 @@ app.use(
   })
 );
 
-// CORS — restrict to frontend origin
+// ─── SAFE CORS (NO CRASH) ───────────────────────────────
+
+const allowedOrigins = [
+  config.frontendUrl,
+  config.frontendUrl?.replace('.web.app', '.firebaseapp.com'),
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: config.isProduction
-      ? [
-          config.frontendUrl,
-          config.frontendUrl.replace('.web.app', '.firebaseapp.com'),
-        ]
-      : [config.frontendUrl, 'http://localhost:5173', 'http://localhost:3000'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
     credentials: true,
-    maxAge: 86400, // 24 hours preflight cache
+    maxAge: 86400,
   })
 );
 
-// ─── General Middleware ─────────────────────────────────
+// ─── GENERAL MIDDLEWARE ─────────────────────────────────
 
-// Request ID for tracing
+app.set('trust proxy', 1);
+
 app.use(requestId);
-
-// Body parsing
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// HTTP request logging via Winston
 if (!config.isTest) {
   app.use(
     morgan(':method :url :status :res[content-length] - :response-time ms', {
@@ -82,74 +70,77 @@ if (!config.isTest) {
   );
 }
 
-// General rate limiter
 app.use(generalLimiter);
 
-// Trust proxy (for Cloud Run / reverse proxies)
-app.set('trust proxy', 1);
+// ─── HEALTH CHECK (VERY IMPORTANT) ──────────────────────
 
-// ─── Routes ─────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    service: 'electionguide-api',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ─── ROUTES ─────────────────────────────────────────────
 
 app.use('/api', routes);
 
-// ─── Error Handling ─────────────────────────────────────
+// ─── ERROR HANDLING ─────────────────────────────────────
 
-// 404 handler for unmatched routes
 app.use(notFoundHandler);
-
-// Global error handler (must be last)
 app.use(errorHandler);
 
-// ─── Server Start ───────────────────────────────────────
+// ─── SERVER START (CLOUD RUN SAFE) ──────────────────────
 
-// Only start listening if this file is run directly (not imported for testing)
 if (require.main === module) {
-  const server = app.listen(config.port, () => {
-    logger.info('ElectionGuide AI Backend started', {
-      port: config.port,
-      environment: config.env,
-      demoMode: config.isDemoMode,
-      frontendUrl: config.frontendUrl,
-    });
+  const PORT = process.env.PORT || config.port || 8080;
 
-    if (config.isDemoMode) {
-      logger.warn(
-        'Running in DEMO MODE — AI responses use pre-built data. Set GOOGLE_GEMINI_API_KEY for live AI.'
-      );
-    }
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+
+    logger.info('ElectionGuide Backend started', {
+      port: PORT,
+      env: config.env,
+      frontend: config.frontendUrl,
+      gemini: process.env.GEMINI_MODEL,
+    });
   });
 
-  // ─── Graceful Shutdown ──────────────────────────────────
+  // ─── GRACEFUL SHUTDOWN ───────────────────────────────
 
-  function gracefulShutdown(signal) {
-    logger.info(`${signal} received — shutting down gracefully`);
+  const shutdown = (signal) => {
+    logger.info(`${signal} received — shutting down`);
     server.close(() => {
-      logger.info('HTTP server closed');
+      logger.info('Server closed');
       process.exit(0);
     });
 
-    // Force shutdown after 10 seconds
     setTimeout(() => {
-      logger.error('Forced shutdown after 10s timeout');
+      logger.error('Force shutdown');
       process.exit(1);
     }, 10000);
-  }
+  };
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
-  process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Promise Rejection', {
-      reason: reason?.message || reason,
-      stack: reason?.stack,
+  process.on('unhandledRejection', (err) => {
+    logger.error('Unhandled Rejection', {
+      message: err?.message,
+      stack: err?.stack,
     });
   });
 
   process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception', { error: err.message, stack: err.stack });
+    logger.error('Uncaught Exception', {
+      message: err.message,
+      stack: err.stack,
+    });
     process.exit(1);
   });
 }
 
-// Export app for testing
+// Export for testing
 module.exports = app;
