@@ -35,7 +35,7 @@ client.interceptors.response.use(
 
 /* ── Chat ────────────────────────────────────────────── */
 export const sendChatMessage = (message) =>
-  client.post(ENDPOINTS.CHAT, { message }).then((r) => r.data?.data ?? {});
+  client.post(ENDPOINTS.CHAT, { message }).then((r) => r.data?.data?.reply);
 
 export const simulateScenario = (scenario) =>
   client.post(ENDPOINTS.CHAT_SCENARIO, { scenario })

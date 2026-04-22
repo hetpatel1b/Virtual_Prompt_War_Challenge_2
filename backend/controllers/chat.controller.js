@@ -27,76 +27,23 @@ const config = require('../config');
 async function sendMessage(req, res, next) {
   try {
     const { message } = req.body;
-    const reqLogger = logger.withRequestId(req.id);
 
-    reqLogger.info('Chat message received', { messageLength: message.length });
+    const reply = await geminiService.generateResponse(message);
 
-    // 1. Check cache for existing response
-    const cacheKey = cacheService.generateKey(message, 'chat');
-    const cached = cacheService.get(cacheKey);
-
-    if (cached) {
-      reqLogger.info('Returning cached chat response');
-
-      // Save to chat history if user is authenticated (async, non-blocking)
-      if (req.user) {
-        firebaseService.saveChatMessage(req.user.uid, message, cached).catch(() => { });
-      }
-
-      // Non-blocking: store in Firestore 'chats' collection
-      firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, cached).catch(() => { });
-
-      return res.json({
-        success: true,
-        data: {
-          reply: cached,
-        },
-      });
-    }
-
-    // 2. Generate AI response
-    let response;
-
-    if (config.isDemoMode) {
-      response = demoService.getResponse(message);
-      reqLogger.info('Using demo mode response');
-    } else {
-      response = await geminiService.generateElectionResponse(message);
-      reqLogger.info('Gemini response generated');
-    }
-
-    // 3. Cache the response
-    cacheService.set(cacheKey, response);
-
-    // 4. Save to chat history if authenticated (async, non-blocking)
-    if (req.user) {
-      firebaseService.saveChatMessage(req.user.uid, message, response).catch(() => { });
-    }
-
-    // 4b. Non-blocking: store in Firestore 'chats' collection
-    firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, response).catch(() => { });
-
-    // 5. Return response
-    res.json({
+    return res.json({
       success: true,
-      data: {
-        reply: response,
-      },
-    });
-  } catch (err) {
-    console.error(err);
-    const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
-    reqLogger.error('sendMessage failed', {
-      error: err.message,
-      stack: err.stack,
+      data: { reply }
     });
 
-    res.status(500).json({
+  } catch (err) {
+    console.error("Chat Controller Error:", err);
+
+    return res.status(500).json({
       success: false,
       error: {
-        code: 'AI_ERROR',
-        message: 'Failed to generate response',
-      },
+        code: "AI_ERROR",
+        message: "Failed to generate response"
+      }
     });
   }
 }
@@ -108,55 +55,23 @@ async function sendMessage(req, res, next) {
 async function simulateScenario(req, res, next) {
   try {
     const { scenario } = req.body;
-    const reqLogger = logger.withRequestId(req.id);
 
-    reqLogger.info('Scenario simulation requested', { scenarioLength: scenario.length });
+    const reply = await geminiService.generateResponse(scenario);
 
-    // 1. Check cache
-    const cacheKey = cacheService.generateKey(scenario, 'scenario');
-    const cached = cacheService.get(cacheKey);
-
-    if (cached) {
-      reqLogger.info('Returning cached scenario response');
-      return res.json({
-        success: true,
-        data: { reply: cached },
-      });
-    }
-
-    // 2. Generate response
-    let response;
-
-    if (config.isDemoMode) {
-      response = demoService.getScenarioResponse(scenario);
-      reqLogger.info('Using demo scenario response');
-    } else {
-      response = await geminiService.generateScenarioResponse(scenario);
-      reqLogger.info('Gemini scenario response generated');
-    }
-
-    // 3. Cache
-    cacheService.set(cacheKey, response);
-
-    // 4. Return
-    res.json({
+    return res.json({
       success: true,
-      data: { reply: response },
-    });
-  } catch (err) {
-    console.error(err);
-    const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
-    reqLogger.error('simulateScenario failed', {
-      error: err.message,
-      stack: err.stack,
+      data: { reply }
     });
 
-    res.status(500).json({
+  } catch (err) {
+    console.error("Chat Controller Error:", err);
+
+    return res.status(500).json({
       success: false,
       error: {
-        code: 'AI_ERROR',
-        message: 'Failed to generate response',
-      },
+        code: "AI_ERROR",
+        message: "Failed to generate response"
+      }
     });
   }
 }

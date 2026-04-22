@@ -14,11 +14,11 @@ export function useChat() {
     setError(null);
 
     try {
-      const data = await sendChatMessage(text);
-      const response = data?.reply ?? 'No response received. Please try again.';
-      const cached = data?.cached ?? false;
-      const fallback = data?.fallback ?? false;
-      const source = data?.source || '';
+      const responseText = await sendChatMessage(text);
+      const response = responseText ?? 'No response received. Please try again.';
+      const cached = false;
+      const fallback = false;
+      const source = '';
       const aiMsg = {
         id: ++idRef.current,
         role: 'ai',

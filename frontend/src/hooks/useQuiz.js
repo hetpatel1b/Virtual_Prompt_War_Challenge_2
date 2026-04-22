@@ -36,19 +36,22 @@ export function useQuiz() {
 
     setAnswers((prev) => {
       const updated = [...prev];
-
-      // replace answer if already exists
       updated[currentIndex] = {
         questionId: q.id,
-        selectedOption,
+        selectedOption
       };
-
       return updated;
     });
+
   }, [phase, questions, currentIndex]);
   const nextQuestion = useCallback(() => {
-    if (currentIndex < questions.length - 1) setCurrentIndex((i) => i + 1);
-  }, [currentIndex, questions.length]);
+    setCurrentIndex((prev) => {
+      if (prev < questions.length - 1) {
+        return prev + 1;
+      }
+      return prev;
+    });
+  }, [questions.length]);
 
   const submitQuiz = useCallback(async () => {
     setIsLoading(true);

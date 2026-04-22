@@ -111,16 +111,7 @@ export default function Quiz() {
                 {isAuthenticated ? 'Submit & See Results' : 'See Results'}
               </Button>
             ) : (
-              <Button
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    signIn('google');
-                    return;
-                  }
-
-                  quiz.nextQuestion();
-                }}
-              >
+              <Button onClick={quiz.nextQuestion}>
                 Next Question
               </Button>
             )}
