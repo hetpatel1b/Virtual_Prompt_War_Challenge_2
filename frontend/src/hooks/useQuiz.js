@@ -16,7 +16,8 @@ export function useQuiz() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getQuizQuestions(opts);
+      const data = await submitQuizAnswers(answers);
+      console.log("QUIZ API RESPONSE:", data);
       setQuestions(data.questions);
       setCurrentIndex(0);
       setAnswers([]);
@@ -30,22 +31,22 @@ export function useQuiz() {
   }, []);
 
   const selectAnswer = useCallback((selectedOption) => {
-  if (phase !== PHASES.ACTIVE) return;
+    if (phase !== PHASES.ACTIVE) return;
 
-  const q = questions[currentIndex];
+    const q = questions[currentIndex];
 
-  setAnswers((prev) => {
-    const updated = [...prev];
+    setAnswers((prev) => {
+      const updated = [...prev];
 
-    // replace answer if already exists
-    updated[currentIndex] = {
-      questionId: q.id,
-      selectedOption,
-    };
+      // replace answer if already exists
+      updated[currentIndex] = {
+        questionId: q.id,
+        selectedOption,
+      };
 
-    return updated;
-  });
-}, [phase, questions, currentIndex]);
+      return updated;
+    });
+  }, [phase, questions, currentIndex]);
   const nextQuestion = useCallback(() => {
     if (currentIndex < questions.length - 1) setCurrentIndex((i) => i + 1);
   }, [currentIndex, questions.length]);

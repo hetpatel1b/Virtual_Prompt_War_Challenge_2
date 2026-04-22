@@ -96,7 +96,12 @@ export default function Quiz() {
             {quiz.isLastQuestion ? (
               <Button
                 onClick={() => {
-                  console.log("Submitting answers:", quiz.answers); // debug
+                  if (!isAuthenticated) {
+                    alert("Please login first");
+                    signIn('google');
+                    return;
+                  }
+
                   quiz.submitQuiz();
                 }}
                 loading={quiz.isLoading}

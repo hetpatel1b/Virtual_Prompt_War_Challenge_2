@@ -79,7 +79,9 @@ async function submitQuiz(req, res, next) {
       }
 
       const isCorrect =
-        String(question.correctIndex) === String(answer.selectedOption);
+        question.correctIndex !== undefined
+          ? String(question.correctIndex) === String(answer.selectedOption)
+          : question.options[answer.selectedOption] === question.correctAnswer;
 
       if (isCorrect) correct++;
 
