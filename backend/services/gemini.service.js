@@ -1,35 +1,39 @@
 const axios = require("axios");
 
-const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
+const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 async function generateResponse(prompt) {
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const MAX_RETRIES = 3;
 
-    const response = await axios.post(url, {
-      contents: [
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
         {
-          parts: [{ text: prompt }]
+          contents: [{ parts: [{ text: prompt }] }],
         }
-      ]
-    });
+      );
 
-    // ✅ SAFE PARSING (VERY IMPORTANT)
-    const text =
-      response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const text = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!text) {
-      console.error("Gemini RAW response:", JSON.stringify(response.data, null, 2));
-      throw new Error("Empty response from Gemini");
+      if (!text) throw new Error("Empty response");
+
+      return text;
+
+    } catch (err) {
+      const status = err?.response?.status;
+
+      // retry only on 503
+      if (status === 503 && i < MAX_RETRIES - 1) {
+        console.log(`Retrying Gemini... attempt ${i + 1}`);
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+
+      console.error("🔥 GEMINI ERROR:", err?.response?.data || err.message);
+      throw err;
     }
-
-    return text;
-
-  } catch (err) {
-    console.error("🔥 GEMINI FULL ERROR:", err.response?.data || err.message);
-    throw err;
   }
 }
-
 module.exports = { generateResponse };

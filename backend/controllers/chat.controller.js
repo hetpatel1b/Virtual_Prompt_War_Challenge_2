@@ -28,8 +28,8 @@ async function sendMessage(req, res, next) {
   try {
     const { message } = req.body;
 
-    const reply = await geminiService.generateResponse(message);
-
+    const reply = await geminiService.generateResponse(message)
+      .catch(() => "AI is busy right now. Please try again in a moment.");
     return res.json({
       success: true,
       data: { reply }
