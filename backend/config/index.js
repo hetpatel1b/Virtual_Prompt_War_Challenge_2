@@ -58,7 +58,6 @@ function validateConfig() {
   if (config.isProduction && !config.isDemoMode) {
     const required = [
       ['GOOGLE_GEMINI_API_KEY', config.gemini.apiKey],
-      ['FIREBASE_PROJECT_ID', config.firebase.projectId],
     ];
 
     const missing = required.filter(([, value]) => !value).map(([key]) => key);
