@@ -5,18 +5,24 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
 async function generateResponse(prompt) {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash", // use stable model
+      model: "gemini-2.5-flash", // ✅ your target model
     });
 
     const result = await model.generateContent(prompt);
 
-    // 🔥 SAFE PARSING (this is the real fix)
-    const text =
-      result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // 🔥 SAFE UNIVERSAL PARSER (works for 1.5 + 2.5)
+    let text = null;
+
+    if (result?.response?.text) {
+      text = result.response.text();
+    } else {
+      text =
+        result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
 
     if (!text) {
-      console.error("EMPTY GEMINI RESPONSE:", result);
-      throw new Error("Empty Gemini response");
+      console.error("EMPTY RESPONSE:", JSON.stringify(result, null, 2));
+      throw new Error("No text returned");
     }
 
     return text;
