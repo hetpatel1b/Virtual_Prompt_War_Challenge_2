@@ -16,10 +16,26 @@ function ChatBubble({ message }) {
     if (isUser) return <p className="text-sm leading-relaxed">{message.content}</p>;
 
     const c = message.content;
-    if (!c) return null;
+    if (!c) return <p className="text-sm text-[var(--color-text-muted)]">No response received.</p>;
+
+    // Handle plain string content (edge case)
+    if (typeof c === 'string') {
+      return <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">{c}</p>;
+    }
+
+    // Handle rawText fallback from backend
+    if (c.rawText && !c.summary) {
+      return <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">{c.rawText}</p>;
+    }
 
     return (
       <div className="space-y-3 text-sm leading-relaxed">
+        {message.fallback && (
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold mb-1">
+            ⚠️ Fallback response
+          </div>
+        )}
+
         {c.summary && <p className="font-medium text-[var(--color-text)]">{c.summary}</p>}
 
         {c.steps?.length > 0 && (

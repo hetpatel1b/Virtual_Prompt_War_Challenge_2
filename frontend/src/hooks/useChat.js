@@ -14,19 +14,52 @@ export function useChat() {
     setError(null);
 
     try {
-      const { response, cached } = await sendChatMessage(text);
-      const aiMsg = { id: ++idRef.current, role: 'ai', content: response, cached, timestamp: Date.now() };
+      const data = await sendChatMessage(text);
+      // Safe access — NEVER destructure directly
+      const response = data?.response ?? {
+        summary: 'No response received. Please try again.',
+        steps: [],
+        bullets: [],
+        examples: [],
+        relatedTopics: [],
+      };
+      const cached = data?.cached ?? false;
+      const fallback = data?.fallback ?? false;
+      const aiMsg = {
+        id: ++idRef.current,
+        role: 'ai',
+        content: response,
+        cached,
+        fallback,
+        timestamp: Date.now(),
+      };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
       setError(err.message);
-      const errMsg = { id: ++idRef.current, role: 'ai', content: { summary: err.message, bullets: [], steps: [], examples: [], relatedTopics: [] }, isError: true, timestamp: Date.now() };
+      const errMsg = {
+        id: ++idRef.current,
+        role: 'ai',
+        content: {
+          summary: err.message || 'Something went wrong. Please try again.',
+          steps: [],
+          bullets: [],
+          examples: [],
+          relatedTopics: [],
+        },
+        isError: true,
+        timestamp: Date.now(),
+      };
       setMessages((prev) => [...prev, errMsg]);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const clearChat = useCallback(() => { setMessages([]); setError(null); }, []);
+  const clearChat = useCallback(() => {
+    setMessages([]);
+    setError(null);
+  }, []);
 
   return { messages, isLoading, error, send, clearChat };
 }
+

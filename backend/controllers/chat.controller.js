@@ -5,6 +5,8 @@
  *   - sendMessage: General election education Q&A
  *   - simulateScenario: Election scenario simulation
  *   - getSuggestions: Curated suggested questions
+ *
+ * Production-safe: NEVER throws — always returns consistent response shape.
  */
 
 const geminiService = require('../services/gemini.service');
@@ -15,6 +17,24 @@ const { getAllSuggestions } = require('../data/suggestions');
 const { getAllScenarios } = require('../data/scenarios');
 const logger = require('../config/logger');
 const config = require('../config');
+
+/** Fallback response used when everything else fails */
+const CHAT_FALLBACK = {
+  summary: 'I apologize, but I encountered an issue processing your request. Please try again.',
+  steps: [],
+  bullets: [],
+  examples: [],
+  relatedTopics: [],
+};
+
+const SCENARIO_FALLBACK = {
+  scenario: 'Unable to process the scenario at this time.',
+  analysis: 'The AI service encountered an issue. Please try again in a moment.',
+  steps: [],
+  outcome: 'Please retry your request.',
+  constitutionalBasis: '',
+  historicalPrecedent: '',
+};
 
 /**
  * POST /api/chat
@@ -44,6 +64,7 @@ async function sendMessage(req, res, next) {
         data: {
           response: cached,
           cached: true,
+          fallback: false,
         },
       });
     }
@@ -67,16 +88,38 @@ async function sendMessage(req, res, next) {
       firebaseService.saveChatMessage(req.user.uid, message, response).catch(() => {});
     }
 
-    // 5. Return response
+    // 5. Determine if this was a fallback response from gemini service
+    const isFallback = !!(response?._fallback);
+
+    // Clean internal flags before sending to client
+    if (response?._fallback) delete response._fallback;
+    if (response?._error) delete response._error;
+
+    // 6. Return response — ALWAYS consistent shape
     res.json({
       success: true,
       data: {
         response,
         cached: false,
+        fallback: isFallback,
       },
     });
   } catch (err) {
-    next(err);
+    // Production-safe: return fallback instead of crashing
+    const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
+    reqLogger.error('sendMessage failed — returning fallback', {
+      error: err.message,
+      stack: err.stack,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        response: CHAT_FALLBACK,
+        cached: false,
+        fallback: true,
+      },
+    });
   }
 }
 
@@ -99,7 +142,7 @@ async function simulateScenario(req, res, next) {
       reqLogger.info('Returning cached scenario response');
       return res.json({
         success: true,
-        data: { response: cached, cached: true },
+        data: { response: cached, cached: true, fallback: false },
       });
     }
 
@@ -114,16 +157,35 @@ async function simulateScenario(req, res, next) {
       reqLogger.info('Gemini scenario response generated');
     }
 
-    // 3. Cache
+    // 3. Determine if fallback
+    const isFallback = !!(response?._fallback);
+    if (response?._fallback) delete response._fallback;
+    if (response?._error) delete response._error;
+
+    // 4. Cache
     cacheService.set(cacheKey, response);
 
-    // 4. Return
+    // 5. Return — ALWAYS consistent shape
     res.json({
       success: true,
-      data: { response, cached: false },
+      data: { response, cached: false, fallback: isFallback },
     });
   } catch (err) {
-    next(err);
+    // Production-safe: return fallback instead of crashing
+    const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
+    reqLogger.error('simulateScenario failed — returning fallback', {
+      error: err.message,
+      stack: err.stack,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        response: SCENARIO_FALLBACK,
+        cached: false,
+        fallback: true,
+      },
+    });
   }
 }
 
@@ -132,16 +194,28 @@ async function simulateScenario(req, res, next) {
  * Get curated suggested questions for the chat interface.
  */
 function getSuggestions(req, res) {
-  const suggestions = getAllSuggestions();
-  const scenarios = getAllScenarios();
+  try {
+    const suggestions = getAllSuggestions();
+    const scenarios = getAllScenarios();
 
-  res.json({
-    success: true,
-    data: {
-      suggestions,
-      scenarios,
-    },
-  });
+    res.json({
+      success: true,
+      data: {
+        suggestions,
+        scenarios,
+      },
+    });
+  } catch (err) {
+    logger.error('getSuggestions failed', { error: err.message });
+    res.json({
+      success: true,
+      data: {
+        suggestions: [],
+        scenarios: [],
+      },
+    });
+  }
 }
 
 module.exports = { sendMessage, simulateScenario, getSuggestions };
+

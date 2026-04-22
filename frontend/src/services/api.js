@@ -15,8 +15,19 @@ client.interceptors.request.use(async (cfg) => {
 
 /* Normalize error responses */
 client.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Safety: if the response is HTML (e.g. Firebase Hosting 404), reject it
+    const contentType = res.headers?.['content-type'] || '';
+    if (contentType.includes('text/html') && !contentType.includes('json')) {
+      return Promise.reject(new Error('API returned HTML instead of JSON. Check API_URL configuration.'));
+    }
+    return res;
+  },
   (err) => {
+    if (!err.response) {
+      // Network error or CORS block
+      return Promise.reject(new Error('Network error — unable to reach the server. Please check your connection.'));
+    }
     const msg = err.response?.data?.error?.message || err.message || 'Something went wrong';
     return Promise.reject(new Error(msg));
   },
@@ -24,27 +35,28 @@ client.interceptors.response.use(
 
 /* ── Chat ────────────────────────────────────────────── */
 export const sendChatMessage = (message) =>
-  client.post(ENDPOINTS.CHAT, { message }).then((r) => r.data.data);
+  client.post(ENDPOINTS.CHAT, { message }).then((r) => r.data?.data ?? {});
 
 export const simulateScenario = (scenario) =>
-  client.post(ENDPOINTS.CHAT_SCENARIO, { scenario }).then((r) => r.data.data);
+  client.post(ENDPOINTS.CHAT_SCENARIO, { scenario }).then((r) => r.data?.data ?? {});
 
 export const getSuggestions = () =>
-  client.get(ENDPOINTS.CHAT_SUGGESTIONS).then((r) => r.data.data);
+  client.get(ENDPOINTS.CHAT_SUGGESTIONS).then((r) => r.data?.data ?? { suggestions: [], scenarios: [] });
 
 /* ── Quiz ────────────────────────────────────────────── */
 export const getQuizQuestions = (params) =>
-  client.get(ENDPOINTS.QUIZ_QUESTIONS, { params }).then((r) => r.data.data);
+  client.get(ENDPOINTS.QUIZ_QUESTIONS, { params }).then((r) => r.data?.data ?? {});
 
 export const submitQuizAnswers = (answers) =>
-  client.post(ENDPOINTS.QUIZ_SUBMIT, { answers }).then((r) => r.data.data);
+  client.post(ENDPOINTS.QUIZ_SUBMIT, { answers }).then((r) => r.data?.data ?? {});
 
 export const getLeaderboard = () =>
-  client.get(ENDPOINTS.QUIZ_LEADERBOARD).then((r) => r.data.data);
+  client.get(ENDPOINTS.QUIZ_LEADERBOARD).then((r) => r.data?.data ?? {});
 
 /* ── User ────────────────────────────────────────────── */
 export const getUserProfile = () =>
-  client.get(ENDPOINTS.USER_PROFILE).then((r) => r.data.data);
+  client.get(ENDPOINTS.USER_PROFILE).then((r) => r.data?.data ?? {});
 
 export const updateUserProgress = (progress) =>
-  client.put(ENDPOINTS.USER_PROGRESS, progress).then((r) => r.data.data);
+  client.put(ENDPOINTS.USER_PROGRESS, progress).then((r) => r.data?.data ?? {});
+

@@ -25,9 +25,18 @@ export default function ScenarioSimulator() {
     setResult(null);
     try {
       const data = await simulateScenario(input.trim());
-      setResult(data.response);
+      // Safe access — never crash on undefined
+      const response = data?.response ?? {
+        scenario: input.trim(),
+        analysis: 'Unable to process. Please try again.',
+        steps: [],
+        outcome: '',
+        constitutionalBasis: '',
+        historicalPrecedent: '',
+      };
+      setResult(response);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
