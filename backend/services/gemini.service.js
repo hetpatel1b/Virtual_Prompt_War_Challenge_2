@@ -5,30 +5,32 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
 async function generateResponse(prompt) {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash", // ✅ your target model
+      model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
     });
 
     const result = await model.generateContent(prompt);
 
-    // 🔥 SAFE UNIVERSAL PARSER (works for 1.5 + 2.5)
+    // 🔥 SAFE PARSING (THIS FIXES YOUR ISSUE)
     let text = null;
 
-    if (result?.response?.text) {
+    if (typeof result.response.text === "function") {
       text = result.response.text();
-    } else {
+    }
+
+    if (!text) {
       text =
         result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
     }
 
     if (!text) {
-      console.error("EMPTY RESPONSE:", JSON.stringify(result, null, 2));
-      throw new Error("No text returned");
+      console.error("FULL GEMINI RESPONSE:", JSON.stringify(result, null, 2));
+      throw new Error("Empty response from Gemini");
     }
 
     return text;
 
   } catch (err) {
-    console.error("GEMINI ERROR:", err);
+    console.error("🔥 GEMINI SERVICE ERROR:", err);
     throw err;
   }
 }
