@@ -30,11 +30,22 @@ export function useQuiz() {
   }, []);
 
   const selectAnswer = useCallback((selectedOption) => {
-    if (phase !== PHASES.ACTIVE) return;
-    const q = questions[currentIndex];
-    setAnswers((prev) => [...prev, { questionId: q.id, selectedOption }]);
-  }, [phase, questions, currentIndex]);
+  if (phase !== PHASES.ACTIVE) return;
 
+  const q = questions[currentIndex];
+
+  setAnswers((prev) => {
+    const updated = [...prev];
+
+    // replace answer if already exists
+    updated[currentIndex] = {
+      questionId: q.id,
+      selectedOption,
+    };
+
+    return updated;
+  });
+}, [phase, questions, currentIndex]);
   const nextQuestion = useCallback(() => {
     if (currentIndex < questions.length - 1) setCurrentIndex((i) => i + 1);
   }, [currentIndex, questions.length]);
@@ -65,7 +76,7 @@ export function useQuiz() {
     phase, questions, currentIndex, answers, results, isLoading, error,
     currentQuestion: questions[currentIndex] || null,
     progress: questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0,
-    hasAnswered: answers.length > currentIndex,
+    hasAnswered: answers[currentIndex] !== undefined,
     isLastQuestion: currentIndex === questions.length - 1,
     startQuiz, selectAnswer, nextQuestion, submitQuiz, retryQuiz,
     PHASES,

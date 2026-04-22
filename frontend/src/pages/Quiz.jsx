@@ -89,15 +89,35 @@ export default function Quiz() {
           onSelect={(opt) => quiz.selectAnswer(opt)}
           feedback={null}
         />
+        {/* 🔍 DEBUG - show answers */}
+        <pre style={{ fontSize: "10px", opacity: 0.5 }}>
+          {JSON.stringify(quiz.answers, null, 2)}
+        </pre>
 
-        {quiz.hasAnswered && (
+        {quiz.answers[quiz.currentIndex] && (
           <div className="flex justify-end animate-fade-up" style={{ animationDuration: '0.3s' }}>
             {quiz.isLastQuestion ? (
-              <Button onClick={quiz.submitQuiz} loading={quiz.isLoading} icon={ArrowRight} variant="glow">
+              <Button
+                onClick={() => {
+                  console.log("Submitting answers:", quiz.answers); // debug
+                  quiz.submitQuiz();
+                }}
+                loading={quiz.isLoading}
+                icon={ArrowRight}
+                variant="glow"
+              >
                 {isAuthenticated ? 'Submit & See Results' : 'See Results'}
               </Button>
             ) : (
-              <Button onClick={quiz.nextQuestion} icon={ArrowRight}>Next Question</Button>
+              <Button
+                onClick={() => {
+                  console.log("Next question, answers:", quiz.answers); // debug
+                  quiz.nextQuestion();
+                }}
+                icon={ArrowRight}
+              >
+                Next Question
+              </Button>
             )}
           </div>
         )}
