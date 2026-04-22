@@ -59,12 +59,16 @@ async function sendMessage(req, res, next) {
         firebaseService.saveChatMessage(req.user.uid, message, cached).catch(() => {});
       }
 
+      // Non-blocking: store in Firestore 'chats' collection
+      firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, cached).catch(() => {});
+
       return res.json({
         success: true,
         data: {
           response: cached,
           cached: true,
           fallback: false,
+          source: cached.source || 'cache',
         },
       });
     }
@@ -88,8 +92,12 @@ async function sendMessage(req, res, next) {
       firebaseService.saveChatMessage(req.user.uid, message, response).catch(() => {});
     }
 
+    // 4b. Non-blocking: store in Firestore 'chats' collection
+    firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, response).catch(() => {});
+
     // 5. Determine if this was a fallback response from gemini service
     const isFallback = !!(response?._fallback);
+    const responseSource = response?.source || (config.isDemoMode ? 'demo' : 'gemini');
 
     // Clean internal flags before sending to client
     if (response?._fallback) delete response._fallback;
@@ -102,6 +110,7 @@ async function sendMessage(req, res, next) {
         response,
         cached: false,
         fallback: isFallback,
+        source: responseSource,
       },
     });
   } catch (err) {
@@ -118,6 +127,7 @@ async function sendMessage(req, res, next) {
         response: CHAT_FALLBACK,
         cached: false,
         fallback: true,
+        source: 'fallback',
       },
     });
   }
@@ -166,9 +176,10 @@ async function simulateScenario(req, res, next) {
     cacheService.set(cacheKey, response);
 
     // 5. Return — ALWAYS consistent shape
+    const scenarioSource = response?.source || (config.isDemoMode ? 'demo' : 'gemini');
     res.json({
       success: true,
-      data: { response, cached: false, fallback: isFallback },
+      data: { response, cached: false, fallback: isFallback, source: scenarioSource },
     });
   } catch (err) {
     // Production-safe: return fallback instead of crashing
@@ -184,6 +195,7 @@ async function simulateScenario(req, res, next) {
         response: SCENARIO_FALLBACK,
         cached: false,
         fallback: true,
+        source: 'fallback',
       },
     });
   }

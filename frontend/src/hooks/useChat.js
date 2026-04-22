@@ -25,12 +25,14 @@ export function useChat() {
       };
       const cached = data?.cached ?? false;
       const fallback = data?.fallback ?? false;
+      const source = data?.source || '';
       const aiMsg = {
         id: ++idRef.current,
         role: 'ai',
         content: response,
         cached,
         fallback,
+        source,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, aiMsg]);

@@ -1,13 +1,25 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { NAV_ITEMS } from '../../utils/constants';
 import { useAuth } from '../../contexts/AuthContext';
-import { LayoutDashboard, MessageSquare, Clock, BookOpen, Lightbulb, Trophy, Zap, LogIn, LogOut, X, Sparkles } from 'lucide-react';
+import { getHealthStatus } from '../../services/api';
+import { LayoutDashboard, MessageSquare, Clock, BookOpen, Lightbulb, Trophy, Zap, LogIn, LogOut, X, Sparkles, Cpu } from 'lucide-react';
 
 const ICON_MAP = { LayoutDashboard, MessageSquare, Clock, BookOpen, Lightbulb, Trophy, Zap };
 
 export default function Sidebar({ isOpen, onClose }) {
   const { pathname } = useLocation();
   const { isAuthenticated, user, signIn, signOut } = useAuth();
+  const [integrations, setIntegrations] = useState(null);
+
+  useEffect(() => {
+    getHealthStatus()
+      .then((data) => setIntegrations(data?.integrations || null))
+      .catch(() => setIntegrations(null));
+  }, []);
+
+  const geminiActive = integrations?.gemini === 'active';
+  const firestoreConnected = integrations?.firestore === 'connected';
 
   return (
     <>
@@ -65,6 +77,28 @@ export default function Sidebar({ isOpen, onClose }) {
             );
           })}
         </nav>
+
+        {/* Google Integration Badge */}
+        <div className="px-4 py-3 border-t border-white/[0.06]">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+            <Cpu size={14} className="text-blue-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold text-slate-300 flex items-center gap-1">
+                <Sparkles size={8} className="text-amber-400" /> Powered by Google Gemini API
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="flex items-center gap-1 text-[9px] text-slate-500">
+                  <span className={`w-1.5 h-1.5 rounded-full ${geminiActive ? 'bg-emerald-400 shadow shadow-emerald-400/50' : 'bg-amber-400'}`} />
+                  Gemini {geminiActive ? 'Active' : 'Demo'}
+                </span>
+                <span className="flex items-center gap-1 text-[9px] text-slate-500">
+                  <span className={`w-1.5 h-1.5 rounded-full ${firestoreConnected ? 'bg-emerald-400 shadow shadow-emerald-400/50' : 'bg-amber-400'}`} />
+                  Firestore {firestoreConnected ? 'Connected' : 'N/A'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* User */}
         <div className="relative p-4 border-t border-white/[0.06]">

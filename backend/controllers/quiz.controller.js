@@ -106,7 +106,7 @@ async function submitQuiz(req, res, next) {
     // Generate feedback message
     const feedback = generateFeedback(percentage);
 
-    // Save score to Firestore
+    // Save score to Firestore (quizAttempts collection)
     const attemptId = await firebaseService.saveQuizScore(
       userId,
       correct,
@@ -118,6 +118,9 @@ async function submitQuiz(req, res, next) {
         isCorrect: b.isCorrect,
       }))
     );
+
+    // Non-blocking: also store in 'scores' collection for Google integration
+    firebaseService.storeQuizScore(userId, correct, total, percentage).catch(() => {});
 
     reqLogger.info('Quiz scored', { userId, correct, total, percentage, attemptId });
 

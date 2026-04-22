@@ -178,7 +178,7 @@ async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
 
   if (!client) {
     // No API key → demo mode
-    return demoService.getResponse(prompt);
+    return { ...demoService.getResponse(prompt), source: 'demo' };
   }
 
   let lastError;
@@ -207,13 +207,14 @@ async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
       }
 
       logger.debug('Gemini response received', {
+        source: 'gemini',
         model: config.gemini.model,
         promptLength: prompt.length,
         responseLength: responseText.length,
         attempt,
       });
 
-      return parseAIResponse(responseText);
+      return { ...parseAIResponse(responseText), source: 'gemini' };
 
     } catch (err) {
       lastError = err;
@@ -248,6 +249,7 @@ async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
 
   return {
     ...demoService.getResponse(prompt),
+    source: 'fallback',
     _fallback: true,
     _error: 'AI service temporarily unavailable',
   };

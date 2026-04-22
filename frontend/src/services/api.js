@@ -60,3 +60,7 @@ export const getUserProfile = () =>
 export const updateUserProgress = (progress) =>
   client.put(ENDPOINTS.USER_PROGRESS, progress).then((r) => r.data?.data ?? {});
 
+/* ── Health / Integration Status ─────────────────────── */
+export const getHealthStatus = () =>
+  client.get(ENDPOINTS.HEALTH).then((r) => r.data?.data ?? {});
+

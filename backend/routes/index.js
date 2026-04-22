@@ -10,14 +10,31 @@ const chatRoutes = require('./chat.routes');
 const quizRoutes = require('./quiz.routes');
 const userRoutes = require('./user.routes');
 const cacheService = require('../services/cache.service');
+const firebaseService = require('../services/firebase.service');
+const config = require('../config');
 
 const router = Router();
 
 /**
  * GET /api/health
  * Health check endpoint for load balancers and monitoring.
+ * Reports Gemini API and Firestore integration status.
  */
-router.get('/health', (req, res) => {
+router.get('/health', async (req, res) => {
+  // Determine Gemini API status
+  const geminiStatus = config.isDemoMode ? 'demo' : (config.gemini.apiKey ? 'active' : 'missing_key');
+
+  // Check Firestore connectivity (non-blocking, with timeout)
+  let firestoreStatus;
+  try {
+    firestoreStatus = await Promise.race([
+      firebaseService.getConnectionStatus(),
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), 3000)),
+    ]);
+  } catch {
+    firestoreStatus = 'error';
+  }
+
   res.json({
     success: true,
     data: {
@@ -28,6 +45,11 @@ router.get('/health', (req, res) => {
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       cache: cacheService.getStats(),
+      integrations: {
+        gemini: geminiStatus,
+        firestore: firestoreStatus,
+        model: config.gemini.model,
+      },
     },
   });
 });

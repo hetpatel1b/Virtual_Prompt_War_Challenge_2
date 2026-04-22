@@ -290,6 +290,85 @@ function getDemoLeaderboard() {
   ];
 }
 
+// ─────────────────────────────────────────
+// Additional Firestore Collections (non-blocking)
+// ─────────────────────────────────────────
+
+/**
+ * Store a chat entry in the 'chats' collection.
+ * Non-blocking — if Firestore fails, the app still works.
+ *
+ * @param {string} userId - User ID or 'anonymous'
+ * @param {string} message - User's message
+ * @param {object} response - AI response object
+ * @returns {Promise<void>}
+ */
+async function storeChatEntry(userId, message, response) {
+  if (!isAvailable()) return;
+
+  try {
+    await db.collection('chats').add({
+      userId,
+      message,
+      responseSummary: response?.summary || '',
+      source: response?.source || 'unknown',
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+    });
+    logger.debug('Chat entry stored in chats collection', { userId });
+  } catch (err) {
+    // Non-critical — log and continue
+    logger.warn('Failed to store chat entry', { error: err.message, userId });
+  }
+}
+
+/**
+ * Store a quiz score in the 'scores' collection.
+ * Non-blocking — if Firestore fails, the app still works.
+ *
+ * @param {string} userId - User's UID
+ * @param {number} score - Number of correct answers
+ * @param {number} total - Total number of questions
+ * @param {number} percentage - Score percentage
+ * @returns {Promise<void>}
+ */
+async function storeQuizScore(userId, score, total, percentage) {
+  if (!isAvailable()) return;
+
+  try {
+    await db.collection('scores').add({
+      userId,
+      score,
+      total,
+      percentage,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+    });
+    logger.debug('Quiz score stored in scores collection', { userId, score, total });
+  } catch (err) {
+    // Non-critical — log and continue
+    logger.warn('Failed to store quiz score', { error: err.message, userId });
+  }
+}
+
+/**
+ * Get Firestore connection status for health check.
+ *
+ * @returns {Promise<string>} 'connected', 'disconnected', or 'not_configured'
+ */
+async function getConnectionStatus() {
+  if (!isAvailable()) return 'not_configured';
+
+  try {
+    // Quick read to verify connectivity — uses a lightweight collection list
+    await db.listCollections();
+    return 'connected';
+  } catch (err) {
+    logger.warn('Firestore health check failed', { error: err.message });
+    return 'disconnected';
+  }
+}
+
 module.exports = {
   getAuth,
   getDb,
@@ -300,4 +379,7 @@ module.exports = {
   updateUserProgress,
   getUserProfile,
   saveChatMessage,
+  storeChatEntry,
+  storeQuizScore,
+  getConnectionStatus,
 };

@@ -109,6 +109,12 @@ function ChatBubble({ message }) {
         {message.cached && !isUser && (
           <span className="absolute bottom-2 right-3 text-[9px] text-[var(--color-text-muted)] font-medium opacity-50">⚡ cached</span>
         )}
+
+        {!isUser && message.source && (
+          <span className={`absolute bottom-2 ${message.cached ? 'right-16' : 'right-3'} text-[9px] font-medium opacity-60 flex items-center gap-0.5 ${message.source === 'gemini' ? 'text-emerald-500' : 'text-[var(--color-text-muted)]'}`}>
+            {message.source === 'gemini' ? '✦ Gemini' : message.source === 'demo' ? '📦 Demo' : message.source === 'cache' ? '' : '↻ Fallback'}
+          </span>
+        )}
       </div>
     </div>
   );
