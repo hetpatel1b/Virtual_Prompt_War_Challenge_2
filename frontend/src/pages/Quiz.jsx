@@ -89,10 +89,7 @@ export default function Quiz() {
           onSelect={(opt) => quiz.selectAnswer(opt)}
           feedback={null}
         />
-        {/* 🔍 DEBUG - show answers */}
-        <pre style={{ fontSize: "10px", opacity: 0.5 }}>
-          {JSON.stringify(quiz.answers, null, 2)}
-        </pre>
+
 
         {quiz.answers[quiz.currentIndex] && (
           <div className="flex justify-end animate-fade-up" style={{ animationDuration: '0.3s' }}>
