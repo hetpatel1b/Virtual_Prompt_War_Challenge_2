@@ -78,7 +78,8 @@ async function submitQuiz(req, res, next) {
         continue;
       }
 
-      const isCorrect = question.correctIndex === answer.selectedOption;
+      const isCorrect =
+        Number(question.correctIndex) === Number(answer.selectedOption);
 
       if (isCorrect) correct++;
 
@@ -120,7 +121,7 @@ async function submitQuiz(req, res, next) {
     );
 
     // Non-blocking: also store in 'scores' collection for Google integration
-    firebaseService.storeQuizScore(userId, correct, total, percentage).catch(() => {});
+    firebaseService.storeQuizScore(userId, correct, total, percentage).catch(() => { });
 
     reqLogger.info('Quiz scored', { userId, correct, total, percentage, attemptId });
 
