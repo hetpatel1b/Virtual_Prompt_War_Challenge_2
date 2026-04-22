@@ -42,7 +42,7 @@ const SCENARIO_FALLBACK = {
  */
 async function sendMessage(req, res, next) {
   try {
-    const { message } = req.body;
+    const { scenario } = req.body;
     const reqLogger = logger.withRequestId(req.id);
 
     reqLogger.info('Chat message received', { messageLength: message.length });
@@ -56,11 +56,11 @@ async function sendMessage(req, res, next) {
 
       // Save to chat history if user is authenticated (async, non-blocking)
       if (req.user) {
-        firebaseService.saveChatMessage(req.user.uid, message, cached).catch(() => {});
+        firebaseService.saveChatMessage(req.user.uid, message, cached).catch(() => { });
       }
 
       // Non-blocking: store in Firestore 'chats' collection
-      firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, cached).catch(() => {});
+      firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, cached).catch(() => { });
 
       return res.json({
         success: true,
@@ -89,11 +89,11 @@ async function sendMessage(req, res, next) {
 
     // 4. Save to chat history if authenticated (async, non-blocking)
     if (req.user) {
-      firebaseService.saveChatMessage(req.user.uid, message, response).catch(() => {});
+      firebaseService.saveChatMessage(req.user.uid, message, response).catch(() => { });
     }
 
     // 4b. Non-blocking: store in Firestore 'chats' collection
-    firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, response).catch(() => {});
+    firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, response).catch(() => { });
 
     // 5. Determine if this was a fallback response from gemini service
     const isFallback = !!(response?._fallback);
