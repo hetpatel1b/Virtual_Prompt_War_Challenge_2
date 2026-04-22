@@ -108,10 +108,14 @@ export default function Quiz() {
             ) : (
               <Button
                 onClick={() => {
-                  console.log("Next question, answers:", quiz.answers); // debug
-                  quiz.nextQuestion();
+                  if (!isAuthenticated) {
+                    signIn('google');
+                    return;
+                  }
+
+                  console.log("Submitting answers:", quiz.answers);
+                  quiz.submitQuiz();
                 }}
-                icon={ArrowRight}
               >
                 Next Question
               </Button>
