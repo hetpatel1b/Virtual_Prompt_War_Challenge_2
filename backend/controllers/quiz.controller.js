@@ -79,7 +79,7 @@ async function submitQuiz(req, res, next) {
       }
 
       const isCorrect =
-        Number(question.correctIndex) === Number(answer.selectedOption);
+        String(question.correctIndex) === String(answer.selectedOption);
 
       if (isCorrect) correct++;
 
