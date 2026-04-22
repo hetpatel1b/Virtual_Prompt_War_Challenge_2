@@ -39,7 +39,7 @@ export const sendChatMessage = (message) =>
 
 export const simulateScenario = (scenario) =>
   client.post(ENDPOINTS.CHAT_SCENARIO, { scenario })
-    .then((r) => r.data?.data ?? {});
+    .then((r) => r.data?.data?.reply);
 
 export const getSuggestions = () =>
   client.get(ENDPOINTS.CHAT_SUGGESTIONS).then((r) => r.data?.data ?? { suggestions: [], scenarios: [] });

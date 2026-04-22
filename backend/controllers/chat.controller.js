@@ -36,7 +36,7 @@ async function sendMessage(req, res, next) {
     });
 
   } catch (err) {
-    console.error("Chat Controller Error:", err);
+    console.error("CONTROLLER ERROR:", err);
 
     return res.status(500).json({
       success: false,
@@ -64,7 +64,7 @@ async function simulateScenario(req, res, next) {
     });
 
   } catch (err) {
-    console.error("Chat Controller Error:", err);
+    console.error("CONTROLLER ERROR:", err);
 
     return res.status(500).json({
       success: false,
