@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+!.env.example
+tests
+coverage
+*.md
+.git
+.gitignore
+logs
+serviceAccountKey*.json
+jest.config.js
+.dockerignore

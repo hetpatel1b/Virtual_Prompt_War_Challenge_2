@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── User Profiles ─────────────────────────────────
+    // Users can only read/write their own profile and progress
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ─── Quiz Attempts ─────────────────────────────────
+    // Public read for leaderboard, authenticated create for submissions
+    match /quizAttempts/{attemptId} {
+      // Anyone can read (leaderboard)
+      allow read: if true;
+
+      // Authenticated users can create their own attempts
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.score is number
+                    && request.resource.data.score >= 0
+                    && request.resource.data.total is number
+                    && request.resource.data.total > 0;
+
+      // Quiz attempts are immutable — no updates or deletes
+      allow update, delete: if false;
+    }
+
+    // ─── Chat History ──────────────────────────────────
+    // Users can only access their own chat history
+    match /chatHistory/{docId} {
+      allow read: if request.auth != null
+                  && resource.data.userId == request.auth.uid;
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      allow update, delete: if false;
+    }
+
+    // ─── Default Deny ──────────────────────────────────
+    // Deny access to all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
