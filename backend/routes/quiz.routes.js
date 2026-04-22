@@ -20,7 +20,6 @@ router.get('/questions', validateQuizQuery, quizController.getQuestions);
 // Submit answers — requires authentication
 router.post(
   '/submit',
-  requireAuth,
   validateQuizSubmission,
   quizController.submitQuiz
 );

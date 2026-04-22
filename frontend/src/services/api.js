@@ -48,7 +48,12 @@ export const getQuizQuestions = (params) =>
   client.get(ENDPOINTS.QUIZ_QUESTIONS, { params }).then((r) => r.data?.data ?? {});
 
 export const submitQuizAnswers = (answers) =>
-  client.post(ENDPOINTS.QUIZ_SUBMIT, { answers }).then((r) => r.data?.data ?? {});
+  client.post(ENDPOINTS.QUIZ_SUBMIT, {
+    responses: answers   // 🔥 FIX HERE
+  }).then((r) => {
+    console.log("Submit API response:", r.data); // DEBUG
+    return r.data?.data ?? {};
+  });
 
 export const getLeaderboard = () =>
   client.get(ENDPOINTS.QUIZ_LEADERBOARD).then((r) => r.data?.data ?? {});
