@@ -9,8 +9,8 @@
  *   - Structured system prompts for election education
  *   - JSON-structured output parsing with fallback
  *   - Retry with exponential backoff on 429/5xx errors
- *   - Demo mode fallback when API key is missing or all retries fail
- *   - Never throws — always returns a usable response
+ *   - Demo mode when API key is missing
+ *   - Throws on failure so errors are visible to callers
  */
 
 const { GoogleGenAI } = require('@google/genai');
@@ -171,7 +171,8 @@ function isRetryable(err) {
  * @param {string} prompt - The user's prompt
  * @param {string} systemPrompt - The system instruction
  * @param {number} [maxRetries=2] - Number of retries on transient failure
- * @returns {Promise<object>} Parsed AI response — never throws
+ * @returns {Promise<object>} Parsed AI response
+ * @throws {Error} If all retries fail or a non-retryable error occurs
  */
 async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
   const client = getClient();
@@ -241,18 +242,14 @@ async function generateWithRetry(prompt, systemPrompt, maxRetries = 2) {
     }
   }
 
-  // ── All retries exhausted or non-retryable → graceful demo fallback ──
-  logger.error('Gemini generation failed — falling back to demo response', {
+  // ── All retries exhausted or non-retryable → throw to controller ──
+  logger.error('Gemini generation failed — all retries exhausted', {
     error: lastError?.message,
+    stack: lastError?.stack,
     model: config.gemini.model,
   });
 
-  return {
-    ...demoService.getResponse(prompt),
-    source: 'fallback',
-    _fallback: true,
-    _error: 'AI service temporarily unavailable',
-  };
+  throw lastError || new Error('Gemini API call failed after all retries');
 }
 
 /* ── Public API ───────────────────────────────────────────────── */

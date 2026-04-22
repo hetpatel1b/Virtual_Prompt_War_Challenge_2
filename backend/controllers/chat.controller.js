@@ -18,23 +18,7 @@ const { getAllScenarios } = require('../data/scenarios');
 const logger = require('../config/logger');
 const config = require('../config');
 
-/** Fallback response used when everything else fails */
-const CHAT_FALLBACK = {
-  summary: 'I apologize, but I encountered an issue processing your request. Please try again.',
-  steps: [],
-  bullets: [],
-  examples: [],
-  relatedTopics: [],
-};
 
-const SCENARIO_FALLBACK = {
-  scenario: 'Unable to process the scenario at this time.',
-  analysis: 'The AI service encountered an issue. Please try again in a moment.',
-  steps: [],
-  outcome: 'Please retry your request.',
-  constitutionalBasis: '',
-  historicalPrecedent: '',
-};
 
 /**
  * POST /api/chat
@@ -95,39 +79,33 @@ async function sendMessage(req, res, next) {
     // 4b. Non-blocking: store in Firestore 'chats' collection
     firebaseService.storeChatEntry(req.user?.uid || 'anonymous', message, response).catch(() => { });
 
-    // 5. Determine if this was a fallback response from gemini service
-    const isFallback = !!(response?._fallback);
+    // 5. Return response
     const responseSource = response?.source || (config.isDemoMode ? 'demo' : 'gemini');
 
     // Clean internal flags before sending to client
-    if (response?._fallback) delete response._fallback;
-    if (response?._error) delete response._error;
+    const reply = { ...response };
+    delete reply.source;
 
-    // 6. Return response — ALWAYS consistent shape
     res.json({
       success: true,
       data: {
-        response,
+        reply,
         cached: false,
-        fallback: isFallback,
         source: responseSource,
       },
     });
   } catch (err) {
-    // Production-safe: return fallback instead of crashing
     const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
-    reqLogger.error('sendMessage failed — returning fallback', {
+    reqLogger.error('sendMessage failed', {
       error: err.message,
       stack: err.stack,
     });
 
-    res.status(200).json({
-      success: true,
-      data: {
-        response: CHAT_FALLBACK,
-        cached: false,
-        fallback: true,
-        source: 'fallback',
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'AI_ERROR',
+        message: 'Failed to generate response',
       },
     });
   }
@@ -167,35 +145,31 @@ async function simulateScenario(req, res, next) {
       reqLogger.info('Gemini scenario response generated');
     }
 
-    // 3. Determine if fallback
-    const isFallback = !!(response?._fallback);
-    if (response?._fallback) delete response._fallback;
-    if (response?._error) delete response._error;
-
-    // 4. Cache
+    // 3. Cache
     cacheService.set(cacheKey, response);
 
-    // 5. Return — ALWAYS consistent shape
+    // 4. Return
     const scenarioSource = response?.source || (config.isDemoMode ? 'demo' : 'gemini');
+
+    const reply = { ...response };
+    delete reply.source;
+
     res.json({
       success: true,
-      data: { response, cached: false, fallback: isFallback, source: scenarioSource },
+      data: { reply, cached: false, source: scenarioSource },
     });
   } catch (err) {
-    // Production-safe: return fallback instead of crashing
     const reqLogger = req.id ? logger.withRequestId(req.id) : logger;
-    reqLogger.error('simulateScenario failed — returning fallback', {
+    reqLogger.error('simulateScenario failed', {
       error: err.message,
       stack: err.stack,
     });
 
-    res.status(200).json({
-      success: true,
-      data: {
-        response: SCENARIO_FALLBACK,
-        cached: false,
-        fallback: true,
-        source: 'fallback',
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'AI_ERROR',
+        message: 'Failed to generate response',
       },
     });
   }
