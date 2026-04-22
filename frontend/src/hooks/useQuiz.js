@@ -16,8 +16,7 @@ export function useQuiz() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await submitQuizAnswers(answers);
-      console.log("QUIZ API RESPONSE:", data);
+      const data = await getQuizQuestions(opts);
       setQuestions(data.questions);
       setCurrentIndex(0);
       setAnswers([]);

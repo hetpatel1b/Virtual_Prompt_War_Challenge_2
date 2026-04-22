@@ -42,7 +42,7 @@ const SCENARIO_FALLBACK = {
  */
 async function sendMessage(req, res, next) {
   try {
-    const { scenario } = req.body;
+    const { message } = req.body;
     const reqLogger = logger.withRequestId(req.id);
 
     reqLogger.info('Chat message received', { messageLength: message.length });
