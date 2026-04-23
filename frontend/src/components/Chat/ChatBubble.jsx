@@ -1,5 +1,6 @@
 import { memo, useState } from 'react';
 import { Bot, User, Copy, Check, Sparkles } from 'lucide-react';
+import ReactMarkdown from "react-markdown";
 
 function ChatBubble({ message }) {
   const isUser = message.role === 'user';
@@ -20,12 +21,20 @@ function ChatBubble({ message }) {
 
     // Handle plain string content (edge case)
     if (typeof c === 'string') {
-      return <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">{c}</p>;
+      return (
+        <div className="prose prose-invert max-w-none text-sm leading-relaxed">
+          <ReactMarkdown>{c}</ReactMarkdown>
+        </div>
+      );
     }
 
     // Handle rawText fallback from backend
     if (c.rawText && !c.summary) {
-      return <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">{c.rawText}</p>;
+      return (
+        <div className="prose prose-invert max-w-none text-sm leading-relaxed">
+          <ReactMarkdown>{c.rawText}</ReactMarkdown>
+        </div>
+      );
     }
 
     return (

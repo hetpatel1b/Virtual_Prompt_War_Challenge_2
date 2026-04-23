@@ -37,10 +37,10 @@ async function sendMessage(req, res, next) {
 
     const reply = await geminiService.generateResponse(message)
       .catch(() => "AI is busy right now. Please try again in a moment.");
-      
+
     // Cache and Store (Non-blocking)
     cacheService.set(cacheKey, reply, 300); // cache for 5 minutes
-    firebaseService.storeChatEntry(userId, message, { summary: reply }).catch(() => {});
+    firebaseService.storeChatEntry(userId, message, { summary: reply }).catch(() => { });
 
     return res.json({
       success: true,
@@ -65,32 +65,42 @@ async function sendMessage(req, res, next) {
  * Simulate an election scenario step-by-step.
  */
 async function simulateScenario(req, res) {
+  console.log("SCENARIO INPUT:", req.body);
   try {
-    const scenario = req.body.scenario || req.body.message;
+    const scenario = req.body?.scenario?.trim();
 
-    if (!scenario) {
+    if (!scenario || scenario.trim().length < 5) {
       return res.json({
         success: true,
-        data: { reply: "Please enter a valid scenario." }
+        data: { reply: "Please enter a proper scenario." }
       });
     }
 
     const prompt = `
 You are an expert in Indian elections.
 
-Analyze this scenario in detail:
+Explain this scenario in a structured and detailed way.
 
-1. What happens legally
-2. What Constitution says
-3. Step-by-step process
-4. Final result
+Include:
+- Legal process
+- Constitutional rules
+- Step-by-step what happens
+- Final outcome
+
+Use headings and bullet points.
 
 Scenario:
 ${scenario}
 `;
 
-    const reply = await geminiService.generateResponse(prompt)
-      .catch(() => "AI is busy. Please try again.");
+    let reply;
+
+    try {
+      reply = await geminiService.generateResponse(prompt);
+    } catch (e) {
+      console.error("Gemini Scenario Error:", e.message);
+      reply = "AI is temporarily busy. Please try again.";
+    }
 
     return res.json({
       success: true,
@@ -142,10 +152,10 @@ async function getHistory(req, res) {
   try {
     const userId = req.user?.uid || 'anonymous';
     const limit = parseInt(req.query.limit, 10) || 10;
-    
+
     // Safely retrieve chats from Firestore (non-blocking)
     const chats = await firebaseService.getRecentChats(userId, limit);
-    
+
     res.json({
       success: true,
       data: { chats }
