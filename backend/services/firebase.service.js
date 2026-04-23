@@ -308,6 +308,34 @@ async function storeChatEntry(userId, message, response) {
 }
 
 /**
+ * Safely retrieve recent chat history from Firestore.
+ * Non-blocking — returns empty array if Firestore fails or is unavailable.
+ *
+ * @param {string} userId - User ID or 'anonymous'
+ * @param {number} limit - Maximum number of recent chats to fetch
+ * @returns {Promise<Array>}
+ */
+async function getRecentChats(userId, limit = 10) {
+  if (!isAvailable()) return [];
+
+  try {
+    const snapshot = await db.collection('chats')
+      .where('userId', '==', userId)
+      .orderBy('timestamp', 'desc')
+      .limit(limit)
+      .get();
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (err) {
+    logger.warn('Failed to fetch recent chats', { error: err.message, userId });
+    return [];
+  }
+}
+
+/**
  * Store a quiz score in the 'scores' collection.
  * Non-blocking — if Firestore fails, the app still works.
  *
@@ -345,8 +373,8 @@ async function getConnectionStatus() {
   if (!isAvailable()) return 'not_configured';
 
   try {
-    // Quick read to verify connectivity — uses a lightweight collection list
-    await db.listCollections();
+    // Quick read to verify connectivity — lightweight dummy read
+    await db.collection('_health').doc('ping').get();
     return 'connected';
   } catch (err) {
     logger.warn('Firestore health check failed', { error: err.message });
@@ -365,6 +393,7 @@ module.exports = {
   getUserProfile,
   saveChatMessage,
   storeChatEntry,
+  getRecentChats,
   storeQuizScore,
   getConnectionStatus,
 };

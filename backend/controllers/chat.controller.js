@@ -27,9 +27,21 @@ const config = require('../config');
 async function sendMessage(req, res, next) {
   try {
     const { message } = req.body;
+    const userId = req.user?.uid || 'anonymous';
+    const cacheKey = `chat_${userId}_${Buffer.from(message || '').toString('base64').substring(0, 20)}`;
+
+    const cachedReply = cacheService.get(cacheKey);
+    if (cachedReply) {
+      return res.json({ success: true, data: { reply: cachedReply } });
+    }
 
     const reply = await geminiService.generateResponse(message)
       .catch(() => "AI is busy right now. Please try again in a moment.");
+      
+    // Cache and Store (Non-blocking)
+    cacheService.set(cacheKey, reply, 300); // cache for 5 minutes
+    firebaseService.storeChatEntry(userId, message, { summary: reply }).catch(() => {});
+
     return res.json({
       success: true,
       data: { reply }
@@ -104,5 +116,30 @@ function getSuggestions(req, res) {
   }
 }
 
-module.exports = { sendMessage, simulateScenario, getSuggestions };
+/**
+ * GET /api/chat/history
+ * Retrieve recent chats for the user from Firestore.
+ */
+async function getHistory(req, res) {
+  try {
+    const userId = req.user?.uid || 'anonymous';
+    const limit = parseInt(req.query.limit, 10) || 10;
+    
+    // Safely retrieve chats from Firestore (non-blocking)
+    const chats = await firebaseService.getRecentChats(userId, limit);
+    
+    res.json({
+      success: true,
+      data: { chats }
+    });
+  } catch (err) {
+    logger.error('getHistory failed', { error: err.message });
+    res.json({
+      success: true,
+      data: { chats: [] }
+    });
+  }
+}
+
+module.exports = { sendMessage, simulateScenario, getSuggestions, getHistory };
 

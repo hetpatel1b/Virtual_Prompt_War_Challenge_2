@@ -35,4 +35,7 @@ router.post(
 // Suggested questions — public, no rate limit
 router.get('/suggestions', chatController.getSuggestions);
 
+// Chat history — optional auth
+router.get('/history', optionalAuth, chatController.getHistory);
+
 module.exports = router;
