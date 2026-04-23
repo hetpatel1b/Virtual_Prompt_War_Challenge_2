@@ -31,13 +31,13 @@ async function generateResponse(prompt) {
       return "AI is busy. Please try again.";
     }
 
-    return "AI service failed. Please try again.";
+    return `ERROR: ${err.response?.data?.error?.message || err.message}`;
   }
 }
 
 // ✅ API CALL
 async function callGemini(prompt) {
-  await delay(1000); // SAFE delay inside function
+  await delay(1000);
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
@@ -46,28 +46,26 @@ async function callGemini(prompt) {
     {
       contents: [
         {
-          role: "user",
           parts: [
             {
-              text: `Explain clearly:\n${prompt}`,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.6,
-        maxOutputTokens: 200,
-      },
+              text: prompt
+            }
+          ]
+        }
+      ]
     },
     {
-      timeout: 10000,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      timeout: 10000
     }
   );
 
   const text =
     response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (!text) throw new Error("Empty response");
+  if (!text) throw new Error("Empty Gemini response");
 
   return text;
 }
