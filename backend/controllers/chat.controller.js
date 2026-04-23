@@ -64,11 +64,33 @@ async function sendMessage(req, res, next) {
  * POST /api/chat/scenario
  * Simulate an election scenario step-by-step.
  */
-async function simulateScenario(req, res, next) {
+async function simulateScenario(req, res) {
   try {
-    const { scenario } = req.body;
+    const scenario = req.body.scenario || req.body.message;
 
-    const reply = await geminiService.generateResponse(scenario);
+    if (!scenario) {
+      return res.json({
+        success: true,
+        data: { reply: "Please enter a valid scenario." }
+      });
+    }
+
+    const prompt = `
+You are an expert in Indian elections.
+
+Analyze this scenario in detail:
+
+1. What happens legally
+2. What Constitution says
+3. Step-by-step process
+4. Final result
+
+Scenario:
+${scenario}
+`;
+
+    const reply = await geminiService.generateResponse(prompt)
+      .catch(() => "AI is busy. Please try again.");
 
     return res.json({
       success: true,
@@ -76,18 +98,14 @@ async function simulateScenario(req, res, next) {
     });
 
   } catch (err) {
-    console.error("CONTROLLER ERROR:", err);
+    console.error("SCENARIO ERROR:", err);
 
-    return res.status(500).json({
-      success: false,
-      error: {
-        code: "AI_ERROR",
-        message: "Failed to generate response"
-      }
+    return res.json({
+      success: true,
+      data: { reply: "Unable to process. Please try again." }
     });
   }
 }
-
 /**
  * GET /api/chat/suggestions
  * Get curated suggested questions for the chat interface.

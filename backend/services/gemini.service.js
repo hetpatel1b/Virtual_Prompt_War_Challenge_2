@@ -3,6 +3,26 @@ const axios = require("axios");
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+const systemPrompt = `
+You are an expert Indian election educator.
+
+Write a DETAILED answer with:
+- Clear headings
+- Step-by-step explanation
+- Real India context (EVM, Election Commission, Lok Sabha, etc.)
+- Bullet points
+- Examples where helpful
+- Minimum 200–300 words
+
+Structure:
+1. Overview
+2. Step-by-step process
+3. Important notes
+4. Final outcome
+
+Use markdown formatting with headings and bullet points.
+`;
+
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 const sanitizePrompt = (p) =>
@@ -37,7 +57,11 @@ async function callGemini(prompt) {
       contents: [
         {
           role: "user",
-          parts: [{ text: prompt }]
+          parts: [
+            {
+              text: `${systemPrompt}\n\nUser Question: ${prompt}`
+            }
+          ]
         }
       ],
       generationConfig: {
