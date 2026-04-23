@@ -22,8 +22,8 @@ const config = {
   },
 
   firebase: {
-    projectId: process.env.FIREBASE_PROJECT_ID || '',
-    serviceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '',
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    serviceAccountPath: null
   },
 
   cache: {

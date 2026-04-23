@@ -32,22 +32,7 @@ function initialize() {
     const initOptions = { projectId: config.firebase.projectId };
 
     // Try to use service account file if available
-    if (config.firebase.serviceAccountPath) {
-      try {
-        const serviceAccount = require(
-          require('path').resolve(config.firebase.serviceAccountPath)
-        );
-        initOptions.credential = admin.credential.cert(serviceAccount);
-        logger.info('Firebase Admin initialized with service account');
-      } catch (err) {
-        // Fall back to application default credentials
-        initOptions.credential = admin.credential.applicationDefault();
-        logger.info('Firebase Admin initialized with application default credentials');
-      }
-    } else {
-      initOptions.credential = admin.credential.applicationDefault();
-      logger.info('Firebase Admin initialized with application default credentials');
-    }
+    initOptions.credential = admin.credential.applicationDefault();
 
     app = admin.initializeApp(initOptions);
     db = admin.firestore();
