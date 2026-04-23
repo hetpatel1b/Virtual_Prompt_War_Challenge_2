@@ -1,72 +1,81 @@
 const axios = require("axios");
 
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL; // should be gemini-2.5-flash
+const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
-// 🔹 Minimal testable pure function
-const sanitizePrompt = (p) => (typeof p === "string" ? p.trim().substring(0, 1000) : "");
+// ✅ Delay helper (MISSING BEFORE)
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 🔹 Main function used by controller
+// ✅ Clean input
+const sanitizePrompt = (p) =>
+  typeof p === "string" ? p.trim().substring(0, 1000) : "";
+
+// 🔥 MAIN FUNCTION
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
-  if (!safePrompt) return "Invalid or empty prompt provided.";
+
+  if (!safePrompt) return "Please enter a valid question.";
 
   try {
     return await callGemini(safePrompt);
   } catch (err) {
     const status = err.response?.status;
 
-    console.error("GEMINI ERROR:", status, err.response?.data || err.message);
+    console.log("Gemini Status:", status);
 
-    // Retry for server busy
-    if (status === 503) {
-      console.log("Retrying Gemini...");
-      await new Promise(r => setTimeout(r, 3000));
-
-      try {
-        return await callGemini(safePrompt);
-      } catch {
-        return "AI servers are busy. Please try again in a few seconds.";
-      }
-    }
-
-    // Rate limit
+    // 🔥 RATE LIMIT
     if (status === 429) {
-      return "Too many requests. Please wait a moment and try again.";
+      await delay(3000);
+      return "Too many users. Please try again in a few seconds.";
     }
 
-    // Fallback
-    return "Failed to generate response.";
+    // 🔥 SERVER BUSY
+    if (status === 503) {
+      await delay(2000);
+      return "AI is busy. Please try again shortly.";
+    }
+
+    console.error("Gemini Error:", err.message);
+
+    return "Something went wrong. Please try again.";
   }
 }
 
-// 🔹 Actual Gemini API call
+// 🔥 GEMINI API CALL
 async function callGemini(prompt) {
+  // 🔥 Small delay to avoid rate limit
+  await delay(1200);
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
-  // Enforce problem alignment (election context)
-  const systemInstruction = "You are an AI assistant helping users understand elections. Keep answers neutral, factual, and concise.";
-
-  console.log(`[Gemini API] Requesting ${MODEL}. Prompt length: ${prompt.length}`);
-
-  const response = await axios.post(url, {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: `${systemInstruction}\n\nUser: ${prompt}` }]
-      }
-    ]
-  });
+  const response = await axios.post(
+    url,
+    {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `Explain clearly and simply:\n${prompt}`,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.6,
+        maxOutputTokens: 200, // 🔥 reduced (IMPORTANT)
+      },
+    },
+    {
+      timeout: 10000, // 🔥 prevents hanging
+    }
+  );
 
   const text =
     response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (!text) {
-    console.log("Gemini returned empty:", JSON.stringify(response.data));
-    return "AI could not generate a response. Please try again.";
-  }
+  if (!text) throw new Error("Empty response");
 
-  console.log(`[Gemini API] Received response. Length: ${text.length}`);
   return text;
 }
 
