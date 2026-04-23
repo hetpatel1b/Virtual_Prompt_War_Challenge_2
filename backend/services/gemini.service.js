@@ -1,16 +1,13 @@
 const axios = require("axios");
 
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-// ✅ Delay helper
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-// ✅ Sanitize
 const sanitizePrompt = (p) =>
   typeof p === "string" ? p.trim().substring(0, 1000) : "";
 
-// ✅ MAIN FUNCTION
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
 
@@ -19,52 +16,44 @@ async function generateResponse(prompt) {
   try {
     return await callGemini(safePrompt);
   } catch (err) {
-    console.error("Gemini FULL ERROR:", err.response?.data || err.message);
-
     const status = err.response?.status;
 
-    if (status === 429) {
-      return "Too many requests. Try again in a few seconds.";
+    if (status === 429 || status === 503) {
+      await delay(2000);
+      return await callGemini(safePrompt);
     }
 
-    if (status === 503) {
-      return "AI is busy. Please try again.";
-    }
-
-    return `ERROR: ${err.response?.data?.error?.message || err.message}`;
+    console.error("Gemini Error:", err.message);
+    return "AI is busy. Please try again.";
   }
 }
 
-// ✅ API CALL
 async function callGemini(prompt) {
-  await delay(1000);
-
   const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
+
   const response = await axios.post(
     url,
     {
       contents: [
         {
-          parts: [
-            {
-              text: prompt
-            }
-          ]
+          role: "user",
+          parts: [{ text: prompt }]
         }
-      ]
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 800
+      }
     },
     {
-      headers: {
-        "Content-Type": "application/json"
-      },
-      timeout: 10000
+      timeout: 30000 // 🔥 FIX
     }
   );
 
   const text =
     response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (!text) throw new Error("Empty Gemini response");
+  if (!text) throw new Error("Empty response");
 
   return text;
 }

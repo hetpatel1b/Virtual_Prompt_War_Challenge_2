@@ -28,10 +28,8 @@ router.post(
   '/scenario',
   aiLimiter,
   optionalAuth,
-  validateScenario,
   chatController.simulateScenario
 );
-
 // Suggested questions — public, no rate limit
 router.get('/suggestions', chatController.getSuggestions);
 
