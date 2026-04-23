@@ -47,6 +47,8 @@ async function callGemini(prompt) {
   // Enforce problem alignment (election context)
   const systemInstruction = "You are an AI assistant helping users understand elections. Keep answers neutral, factual, and concise.";
 
+  console.log(`[Gemini API] Requesting ${MODEL}. Prompt length: ${prompt.length}`);
+
   const response = await axios.post(url, {
     contents: [
       {
@@ -58,6 +60,8 @@ async function callGemini(prompt) {
 
   const text =
     response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  console.log(`[Gemini API] Received response. Length: ${text?.length || 0}`);
 
   return text || "No response generated. Try again.";
 }

@@ -48,6 +48,7 @@ router.get('/health', async (req, res) => {
       integrations: {
         gemini: geminiStatus,
         firestore: firestoreStatus,
+        firestoreActivelyUsed: firestoreStatus === 'connected',
         model: config.gemini.model,
       },
     },

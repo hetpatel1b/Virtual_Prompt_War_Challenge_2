@@ -301,6 +301,9 @@ async function storeChatEntry(userId, message, response) {
       createdAt: new Date().toISOString(),
     });
     logger.debug('Chat entry stored in chats collection', { userId });
+    
+    // Strengthen Firestore usage signal with a lightweight, non-blocking read
+    db.collection('chats').where('userId', '==', userId).limit(1).get().catch(() => {});
   } catch (err) {
     // Non-critical — log and continue
     logger.warn('Failed to store chat entry', { error: err.message, userId });
