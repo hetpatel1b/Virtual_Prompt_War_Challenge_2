@@ -3,14 +3,14 @@ const axios = require("axios");
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
-// ✅ Delay helper (MISSING BEFORE)
+// ✅ Delay helper
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ✅ Clean input
+// ✅ Sanitize
 const sanitizePrompt = (p) =>
   typeof p === "string" ? p.trim().substring(0, 1000) : "";
 
-// 🔥 MAIN FUNCTION
+// ✅ MAIN FUNCTION
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
 
@@ -19,32 +19,25 @@ async function generateResponse(prompt) {
   try {
     return await callGemini(safePrompt);
   } catch (err) {
+    console.error("Gemini FULL ERROR:", err.response?.data || err.message);
+
     const status = err.response?.status;
 
-    console.log("Gemini Status:", status);
-
-    // 🔥 RATE LIMIT
     if (status === 429) {
-      await delay(3000);
-      return "Too many users. Please try again in a few seconds.";
+      return "Too many requests. Try again in a few seconds.";
     }
 
-    // 🔥 SERVER BUSY
     if (status === 503) {
-      await delay(2000);
-      return "AI is busy. Please try again shortly.";
+      return "AI is busy. Please try again.";
     }
 
-    console.error("Gemini Error:", err.message);
-
-    return "Something went wrong. Please try again.";
+    return "AI service failed. Please try again.";
   }
 }
 
-// 🔥 GEMINI API CALL
+// ✅ API CALL
 async function callGemini(prompt) {
-  // 🔥 Small delay to avoid rate limit
-  await delay(1200);
+  await delay(1000); // SAFE delay inside function
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
@@ -56,18 +49,18 @@ async function callGemini(prompt) {
           role: "user",
           parts: [
             {
-              text: `Explain clearly and simply:\n${prompt}`,
+              text: `Explain clearly:\n${prompt}`,
             },
           ],
         },
       ],
       generationConfig: {
         temperature: 0.6,
-        maxOutputTokens: 200, // 🔥 reduced (IMPORTANT)
+        maxOutputTokens: 200,
       },
     },
     {
-      timeout: 10000, // 🔥 prevents hanging
+      timeout: 10000,
     }
   );
 
@@ -79,4 +72,4 @@ async function callGemini(prompt) {
   return text;
 }
 
-module.exports = { generateResponse, sanitizePrompt };
+module.exports = { generateResponse };
