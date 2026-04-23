@@ -72,16 +72,7 @@ if (!config.isTest) {
 
 app.use(generalLimiter);
 
-// ─── HEALTH CHECK (VERY IMPORTANT) ──────────────────────
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'healthy',
-    service: 'electionguide-api',
-    timestamp: new Date().toISOString(),
-  });
-});
 
 // ─── ROUTES ─────────────────────────────────────────────
 

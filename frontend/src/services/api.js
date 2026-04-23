@@ -2,7 +2,11 @@ import axios from 'axios';
 import { getIdToken } from './firebase';
 import { ENDPOINTS } from '../utils/constants';
 
-const client = axios.create({ timeout: 30000, headers: { 'Content-Type': 'application/json' } });
+const client = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,  // 👈 ADD THIS
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' }
+});
 
 /* Attach auth token to every request when available */
 client.interceptors.request.use(async (cfg) => {
