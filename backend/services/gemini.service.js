@@ -8,19 +8,29 @@ async function generateResponse(prompt) {
   try {
     return await callGemini(prompt);
   } catch (err) {
-    if (err.response?.status === 503) {
+    const status = err.response?.status;
+
+    console.error("GEMINI ERROR:", status, err.response?.data || err.message);
+
+    // Retry for server busy
+    if (status === 503) {
       console.log("Retrying Gemini...");
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 3000));
 
       try {
         return await callGemini(prompt);
       } catch {
-        return "AI is busy right now. Please try again in a moment.";
+        return "AI servers are busy. Please try again in a few seconds.";
       }
     }
 
-    console.error("GEMINI ERROR:", err.response?.data || err.message);
-    throw err;
+    // Rate limit
+    if (status === 429) {
+      return "Too many requests. Please wait a moment and try again.";
+    }
+
+    // Fallback
+    return "Failed to generate response.";
   }
 }
 
@@ -31,6 +41,7 @@ async function callGemini(prompt) {
   const response = await axios.post(url, {
     contents: [
       {
+        role: "user",
         parts: [{ text: prompt }]
       }
     ]
@@ -39,11 +50,7 @@ async function callGemini(prompt) {
   const text =
     response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (!text) {
-    throw new Error("Empty response from Gemini");
-  }
-
-  return text;
+  return text || "No response generated. Try again.";
 }
 
 module.exports = { generateResponse };
