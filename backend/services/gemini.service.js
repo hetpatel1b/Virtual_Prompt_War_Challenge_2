@@ -65,6 +65,9 @@ async function callGemini(prompt) {
     console.log("Gemini returned empty:", JSON.stringify(response.data));
     return "AI could not generate a response. Please try again.";
   }
+
+  console.log(`[Gemini API] Received response. Length: ${text.length}`);
+  return text;
 }
 
 module.exports = { generateResponse, sanitizePrompt };
