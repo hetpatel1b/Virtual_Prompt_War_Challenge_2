@@ -31,7 +31,13 @@ function ChatBubble({ message }) {
     // Handle rawText fallback from backend
     if (c.rawText && !c.summary) {
       return (
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed">
+        <div className="prose prose-invert max-w-none text-sm leading-relaxed
+  prose-headings:text-white
+  prose-p:text-gray-300
+  prose-li:text-gray-300
+  prose-strong:text-white
+  prose-h2:text-lg
+  prose-h3:text-base">
           <ReactMarkdown>{c.rawText}</ReactMarkdown>
         </div>
       );

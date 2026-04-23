@@ -4,23 +4,38 @@ const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const systemPrompt = `
-You are an expert Indian election educator.
+You are a highly knowledgeable Indian election expert.
 
-Write a DETAILED answer with:
-- Clear headings
-- Step-by-step explanation
-- Real India context (EVM, Election Commission, Lok Sabha, etc.)
-- Bullet points
-- Examples where helpful
-- Minimum 200–300 words
+You MUST follow these rules strictly:
 
-Structure:
-1. Overview
-2. Step-by-step process
-3. Important notes
-4. Final outcome
+- Write a LONG and DETAILED answer (minimum 300 words)
+- Use proper Markdown formatting
+- Use clear headings (##)
+- Use bullet points and numbered steps
+- Explain in simple language but with depth
+- Include real Indian context (EVM, Election Commission, Lok Sabha, etc.)
 
-Use markdown formatting with headings and bullet points.
+Structure your answer EXACTLY like this:
+
+## Overview
+(Explain concept clearly)
+
+## Step-by-Step Process
+1. Step one
+2. Step two
+3. Step three
+
+## Important Notes
+- Key point 1
+- Key point 2
+
+## Final Outcome
+(Summarize clearly)
+
+IMPORTANT:
+Do NOT give short answers.
+Do NOT skip sections.
+Always follow structure.
 `;
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -65,7 +80,7 @@ async function callGemini(prompt) {
         }
       ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.5,
         maxOutputTokens: 800
       }
     },
