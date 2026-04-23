@@ -4,38 +4,17 @@ const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const systemPrompt = `
-You are a highly knowledgeable Indian election expert.
+You are an expert in Indian elections.
 
-You MUST follow these rules strictly:
-
-- Write a LONG and DETAILED answer (minimum 300 words)
-- Use proper Markdown formatting
-- Use clear headings (##)
-- Use bullet points and numbered steps
-- Explain in simple language but with depth
-- Include real Indian context (EVM, Election Commission, Lok Sabha, etc.)
-
-Structure your answer EXACTLY like this:
+Give a clear and structured answer using:
 
 ## Overview
-(Explain concept clearly)
+## Steps
+## Important Points
+## Conclusion
 
-## Step-by-Step Process
-1. Step one
-2. Step two
-3. Step three
-
-## Important Notes
-- Key point 1
-- Key point 2
-
-## Final Outcome
-(Summarize clearly)
-
-IMPORTANT:
-Do NOT give short answers.
-Do NOT skip sections.
-Always follow structure.
+Keep answer detailed but concise (150–250 words).
+Use bullet points and simple language.
 `;
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -53,13 +32,23 @@ async function generateResponse(prompt) {
   } catch (err) {
     const status = err.response?.status;
 
-    if (status === 429 || status === 503) {
-      await delay(2000);
-      return await callGemini(safePrompt);
+    console.log("Gemini error status:", status);
+
+    // ✅ Handle rate limit
+    if (safePrompt.length < 5) {
+      return "Please ask a meaningful question.";
+    }
+    if (status === 429) {
+      return "⚠️ Too many users right now. Please wait a few seconds and try again.";
     }
 
-    console.error("Gemini Error:", err.message);
-    return "AI is busy. Please try again.";
+    // ✅ Handle busy server
+    if (status === 503) {
+      return "⚠️ AI is temporarily busy. Please try again in a moment.";
+    }
+
+    // ✅ Final fallback
+    return "⚠️ AI service error. Please try again.";
   }
 }
 
@@ -80,8 +69,8 @@ async function callGemini(prompt) {
         }
       ],
       generationConfig: {
-        temperature: 0.5,
-        maxOutputTokens: 800
+        temperature: 0.4,
+        maxOutputTokens: 500
       }
     },
     {
