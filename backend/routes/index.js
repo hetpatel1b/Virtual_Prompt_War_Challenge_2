@@ -22,7 +22,7 @@ const router = Router();
  */
 router.get('/health', async (req, res) => {
   // Determine Gemini API status
-  const geminiStatus = config.isDemoMode ? 'demo' : (config.gemini.apiKey ? 'active' : 'missing_key');
+  const geminiStatus = config.gemini.apiKey ? 'active' : 'missing_key';
 
   // Check Firestore connectivity (non-blocking, with timeout)
   let firestoreStatus;
