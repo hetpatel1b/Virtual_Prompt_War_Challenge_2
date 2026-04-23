@@ -39,8 +39,7 @@ async function generateResponse(prompt) {
 async function callGemini(prompt) {
   await delay(1000);
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-
+  const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
   const response = await axios.post(
     url,
     {
