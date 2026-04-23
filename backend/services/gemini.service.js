@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 // ✅ Delay helper
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
