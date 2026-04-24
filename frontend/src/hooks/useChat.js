@@ -1,3 +1,5 @@
+// frontend/src/hooks/useChat.js
+
 import { useState, useCallback, useRef } from 'react';
 import { sendChatMessage } from '../services/api';
 
@@ -6,8 +8,13 @@ export function useChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const idRef = useRef(0);
+  const isRequestActiveRef = useRef(false);
 
   const send = useCallback(async (text) => {
+    if (isLoading || isRequestActiveRef.current) return;
+
+    isRequestActiveRef.current = true;
+
     const userMsg = { id: ++idRef.current, role: 'user', content: text, timestamp: Date.now() };
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
@@ -64,8 +71,9 @@ export function useChat() {
       setMessages((prev) => [...prev.filter(m => m.id !== queueMsgId), errMsg]);
     } finally {
       setIsLoading(false);
+      isRequestActiveRef.current = false;
     }
-  }, []);
+  }, [isLoading]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
