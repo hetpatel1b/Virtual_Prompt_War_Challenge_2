@@ -27,7 +27,7 @@ function QuestionCard({ question, selectedOption, onSelect, feedback }) {
             } else if (i === selectedOption && !isCorrect) {
               classes = 'border-red-400 bg-red-50 dark:bg-red-900/20 ring-2 ring-red-500/20';
             } else {
-              classes = 'border-[var(--color-border)] bg-[var(--color-surface-alt)] text-[var(--color-text-muted)]';
+              classes = 'border-[var(--color-border)] opacity-40';
             }
           } else if (i === selectedOption) {
             classes = 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20 shadow-lg shadow-primary-600/10';
