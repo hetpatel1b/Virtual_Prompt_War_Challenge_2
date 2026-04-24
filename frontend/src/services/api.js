@@ -3,7 +3,7 @@ import { getIdToken } from './firebase';
 import { ENDPOINTS } from '../utils/constants';
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,  // 👈 ADD THIS
+  baseURL: import.meta.env.VITE_API_URL || '',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' }
 });
@@ -17,7 +17,7 @@ client.interceptors.request.use(async (cfg) => {
   return cfg;
 });
 
-/* Normalize error responses */
+/* Normalize error responses — NO retry, NO hidden loops */
 client.interceptors.response.use(
   (res) => {
     // Safety: if the response is HTML (e.g. Firebase Hosting 404), reject it
@@ -32,18 +32,23 @@ client.interceptors.response.use(
       // Network error or CORS block
       return Promise.reject(new Error('Network error — unable to reach the server. Please check your connection.'));
     }
+
+    // Surface rate-limit errors clearly
+    if (err.response.status === 429) {
+      return Promise.reject(new Error('Too many requests. Please wait a moment before trying again.'));
+    }
+
     const msg = err.response?.data?.error?.message || err.message || 'Something went wrong';
     return Promise.reject(new Error(msg));
   },
 );
 
 /* ── Chat ────────────────────────────────────────────── */
-export const sendChatMessage = (message) =>
-  client.post(ENDPOINTS.CHAT, { message }).then((r) => r.data?.data?.reply);
+export const sendChatMessage = (message, signal) =>
+  client.post(ENDPOINTS.CHAT, { message }, { signal }).then((r) => r.data?.data?.reply);
 
 export const simulateScenario = (scenario) =>
-  client.post(ENDPOINTS.CHAT_SCENARIO, { scenario })
-    .then((r) => r.data?.data?.reply);
+  client.post(ENDPOINTS.CHAT_SCENARIO, { scenario }).then((r) => r.data?.data?.reply);
 
 export const getSuggestions = () =>
   client.get(ENDPOINTS.CHAT_SUGGESTIONS).then((r) => r.data?.data ?? { suggestions: [], scenarios: [] });
@@ -68,4 +73,3 @@ export const updateUserProgress = (progress) =>
 /* ── Health / Integration Status ─────────────────────── */
 export const getHealthStatus = () =>
   client.get(ENDPOINTS.HEALTH).then((r) => r.data?.data ?? {});
-

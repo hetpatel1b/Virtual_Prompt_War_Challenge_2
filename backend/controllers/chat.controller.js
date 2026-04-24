@@ -6,7 +6,7 @@
  *   - simulateScenario: Election scenario simulation
  *   - getSuggestions: Curated suggested questions
  *
- * Production-safe: NEVER throws — always returns consistent response shape.
+ * Production-safe: Returns proper HTTP status codes for errors.
  */
 
 const geminiService = require('../services/gemini.service');
@@ -35,8 +35,41 @@ async function sendMessage(req, res, next) {
       return res.json({ success: true, data: { reply: cachedReply } });
     }
 
-    const reply = await geminiService.generateResponse(message)
-      .catch(() => "AI is busy right now. Please try again in a moment.");
+    let reply;
+    try {
+      reply = await geminiService.generateResponse(message);
+    } catch (err) {
+      const status = err.response?.status;
+      console.error("Gemini API error:", status, err.message);
+
+      if (status === 429) {
+        return res.status(429).json({
+          success: false,
+          error: {
+            code: 'RATE_LIMIT',
+            message: 'AI service is busy. Please wait a moment and try again.'
+          }
+        });
+      }
+
+      if (status === 503) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'SERVICE_UNAVAILABLE',
+            message: 'AI service is temporarily unavailable. Please try again shortly.'
+          }
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'AI_ERROR',
+          message: 'Failed to generate response. Please try again.'
+        }
+      });
+    }
 
     // Cache and Store (Non-blocking)
     cacheService.set(cacheKey, reply, 300); // cache for 5 minutes
@@ -89,18 +122,40 @@ Scenario:
 ${scenario}
 `;
 
-    const reply = await geminiService.generateResponse(prompt);
+    let reply;
+    try {
+      reply = await geminiService.generateResponse(prompt);
+    } catch (err) {
+      const status = err.response?.status;
+
+      if (status === 429) {
+        return res.status(429).json({
+          success: false,
+          error: {
+            code: 'RATE_LIMIT',
+            message: 'AI service is busy. Please wait a moment and try again.'
+          }
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          reply: "⚠️ Unable to process scenario right now. Please try again."
+        }
+      });
+    }
 
     return res.json({
       success: true,
-      data: { reply }   // ✅ IMPORTANT
+      data: { reply }
     });
 
   } catch (err) {
     console.error("SCENARIO ERROR:", err);
 
     return res.json({
-      success: true,   // ✅ NEVER false
+      success: true,
       data: {
         reply: "⚠️ Unable to process scenario right now. Please try again."
       }
@@ -161,4 +216,3 @@ async function getHistory(req, res) {
 }
 
 module.exports = { sendMessage, simulateScenario, getSuggestions, getHistory };
-

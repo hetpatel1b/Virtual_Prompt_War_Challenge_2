@@ -21,12 +21,12 @@ Use:
 Finish properly with a conclusion.
 `;
 
-const delay = (ms) => new Promise(res => setTimeout(res, ms));
-
 const sanitizePrompt = (p) =>
   typeof p === "string" ? p.trim().substring(0, 1000) : "";
 
-let lastRequestTime = 0;
+// Simple mutex: ensures only ONE Gemini call runs at a time.
+// Additional requests wait in line instead of being rejected.
+let pendingRequest = Promise.resolve();
 
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
@@ -35,29 +35,15 @@ async function generateResponse(prompt) {
     return "Please ask a meaningful question about elections.";
   }
 
-  const now = Date.now();
-  if (now - lastRequestTime < 3000) {
-    return "⚠️ Please wait a few seconds before sending another request.";
-  }
-  lastRequestTime = now;
+  // Queue this request behind any currently running request
+  const result = new Promise((resolve, reject) => {
+    pendingRequest = pendingRequest
+      .then(() => callGemini(safePrompt))
+      .then(resolve)
+      .catch(reject);
+  });
 
-  try {
-    const response = await callGemini(safePrompt);
-    return response;
-  } catch (err) {
-    const status = err.response?.status;
-    console.log("Gemini error status:", status);
-
-    if (status === 429) {
-      return "⚠️ Too many users right now. Please wait a few seconds.";
-    }
-
-    if (status === 503) {
-      return "⚠️ AI is temporarily busy. Please try again shortly.";
-    }
-
-    return "⚠️ AI service error. Please try again.";
-  }
+  return result;
 }
 
 async function callGemini(prompt) {
@@ -91,7 +77,7 @@ async function callGemini(prompt) {
     .join("")
     .trim();
 
-  if (!text) throw new Error("Empty response");
+  if (!text) throw new Error("Empty response from Gemini");
 
   return text;
 }

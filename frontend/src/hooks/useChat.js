@@ -9,34 +9,32 @@ export function useChat() {
   const [error, setError] = useState(null);
   const idRef = useRef(0);
   const isRequestActiveRef = useRef(false);
+  const abortRef = useRef(null);
 
   const send = useCallback(async (text) => {
-    if (isLoading || isRequestActiveRef.current) return;
-
+    // Hard lock — only ONE request at a time, period.
+    if (isRequestActiveRef.current) return;
     isRequestActiveRef.current = true;
+
+    // Abort any previously lingering request (e.g. StrictMode remount)
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const userMsg = { id: ++idRef.current, role: 'user', content: text, timestamp: Date.now() };
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
     setError(null);
 
-    const queueMsgId = ++idRef.current;
-    const queueTimer = setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: queueMsgId,
-          role: 'ai',
-          content: '⏳ Processing your request, please wait...',
-          timestamp: Date.now(),
-          isTemporary: true
-        }
-      ]);
-    }, 2500);
-
     try {
-      const responseText = await sendChatMessage(text);
-      clearTimeout(queueTimer);
+      const responseText = await sendChatMessage(text, controller.signal);
+
+      // If aborted, silently stop
+      if (controller.signal.aborted) return;
 
       const response = responseText ?? 'No response received. Please try again.';
       const aiMsg = {
@@ -49,9 +47,11 @@ export function useChat() {
         timestamp: Date.now(),
       };
 
-      setMessages((prev) => [...prev.filter(m => m.id !== queueMsgId), aiMsg]);
+      setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      clearTimeout(queueTimer);
+      // Ignore abort errors
+      if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
+
       setError(err.message);
 
       const errMsg = {
@@ -68,12 +68,13 @@ export function useChat() {
         timestamp: Date.now(),
       };
 
-      setMessages((prev) => [...prev.filter(m => m.id !== queueMsgId), errMsg]);
+      setMessages((prev) => [...prev, errMsg]);
     } finally {
       setIsLoading(false);
       isRequestActiveRef.current = false;
+      abortRef.current = null;
     }
-  }, [isLoading]);
+  }, []); // No dependencies — refs handle all state
 
   const clearChat = useCallback(() => {
     setMessages([]);

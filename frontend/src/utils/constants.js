@@ -9,22 +9,18 @@ export const ROUTES = {
   SIMULATOR: '/simulator',
 };
 
-/* ── API Endpoints ───────────────────────────────────── */
-export const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
-
+/* ── API Endpoints (relative — axios baseURL handles the host) ── */
 export const ENDPOINTS = {
-  CHAT: `${API_BASE}/chat`,
-  CHAT_SCENARIO: `${API_BASE}/chat/scenario`,
-  CHAT_SUGGESTIONS: `${API_BASE}/chat/suggestions`,
-  QUIZ_QUESTIONS: `${API_BASE}/quiz/questions`,
-  QUIZ_SUBMIT: `${API_BASE}/quiz/submit`,
-  QUIZ_LEADERBOARD: `${API_BASE}/quiz/leaderboard`,
-  QUIZ_HISTORY: `${API_BASE}/quiz/history`,
-  USER_PROFILE: `${API_BASE}/user/profile`,
-  USER_PROGRESS: `${API_BASE}/user/progress`,
-  HEALTH: `${API_BASE}/health`,
+  CHAT: '/api/chat',
+  CHAT_SCENARIO: '/api/chat/scenario',
+  CHAT_SUGGESTIONS: '/api/chat/suggestions',
+  QUIZ_QUESTIONS: '/api/quiz/questions',
+  QUIZ_SUBMIT: '/api/quiz/submit',
+  QUIZ_LEADERBOARD: '/api/quiz/leaderboard',
+  QUIZ_HISTORY: '/api/quiz/history',
+  USER_PROFILE: '/api/user/profile',
+  USER_PROGRESS: '/api/user/progress',
+  HEALTH: '/api/health',
 };
 
 /* ── Navigation Items ────────────────────────────────── */
