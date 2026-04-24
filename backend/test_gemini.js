@@ -1,8 +1,5 @@
 const axios = require("axios");
 
-const API_KEY = "AIzaSyDEyjBDRfQerncRTkZnljpTZ8oINeSgCFA";
-const MODEL = "gemini-2.5-flash";
-
 async function testGemini() {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
   console.log(`CALLING GEMINI`);
