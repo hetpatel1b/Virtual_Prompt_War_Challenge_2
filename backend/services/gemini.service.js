@@ -4,17 +4,23 @@ const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const systemPrompt = `
-You are an expert in Indian elections.
+You are an expert Indian election educator.
 
-Give a clear and structured answer using:
+Always respond in a detailed, structured format.
 
+Rules:
+- Minimum 300 words
+- Use headings (##)
+- Use bullet points
+- Give step-by-step explanation
+- Include real India context (EVM, Election Commission, Lok Sabha)
+- Use clear formatting (markdown)
+
+Format:
 ## Overview
-## Steps
-## Important Points
-## Conclusion
-
-Keep answer detailed but concise (150–250 words).
-Use bullet points and simple language.
+## Types / Steps
+## Important Notes
+## Final Summary
 `;
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -55,26 +61,28 @@ async function generateResponse(prompt) {
 async function callGemini(prompt) {
   const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
 
+  const fullPrompt = `${systemPrompt}
+
+User Question:
+${prompt}
+`;
+
   const response = await axios.post(
     url,
     {
       contents: [
         {
           role: "user",
-          parts: [
-            {
-              text: `${systemPrompt}\n\nUser Question: ${prompt}`
-            }
-          ]
+          parts: [{ text: fullPrompt }]
         }
       ],
       generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 500
+        temperature: 0.6,
+        maxOutputTokens: 1200
       }
     },
     {
-      timeout: 30000 // 🔥 FIX
+      timeout: 60000 // 🔥 increase timeout
     }
   );
 
