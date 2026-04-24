@@ -27,11 +27,11 @@ const sanitizePrompt = (p) =>
   typeof p === "string" ? p.trim().substring(0, 1000) : "";
 
 // ─── FIFO Queue + Rate-Limit Guard ─────────────────────────
-// Ensures only ONE Gemini call at a time, with a minimum 3-second
-// gap between calls to stay under the 5 RPM free tier limit.
+// Ensures only ONE Gemini call at a time, with a minimum 13-second
+// gap between calls to stay safely under the free tier limit (5 RPM).
 let pendingRequest = Promise.resolve();
 let lastCallTime = 0;
-const MIN_GAP_MS = 3000; // 3 seconds between Gemini calls
+const MIN_GAP_MS = 13000; // 13 seconds between Gemini calls (5 RPM safe)
 
 // ─── In-Memory Response Cache ──────────────────────────────
 // Global cache keyed by normalized prompt (shared across all users).
