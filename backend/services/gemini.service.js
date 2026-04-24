@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash"; // ✅ FIXED
 
 const systemPrompt = `
 You are an expert Indian election educator.
@@ -31,35 +31,39 @@ const sanitizePrompt = (p) =>
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
 
-  if (!safePrompt) return "Please enter a valid question.";
+  // ✅ Strong validation
+  if (!safePrompt || safePrompt.length < 10) {
+    return "Please ask a meaningful question about elections.";
+  }
 
   try {
     return await callGemini(safePrompt);
   } catch (err) {
     const status = err.response?.status;
-
     console.log("Gemini error status:", status);
 
-    // ✅ Handle rate limit
-    if (safePrompt.length < 5) {
-      return "Please ask a meaningful question.";
-    }
+    // ✅ Handle specific errors FIRST
     if (status === 429) {
-      return "⚠️ Too many users right now. Please wait a few seconds and try again.";
+      return "⚠️ Too many users right now. Please wait a few seconds.";
     }
 
-    // ✅ Handle busy server
     if (status === 503) {
-      return "⚠️ AI is temporarily busy. Please try again in a moment.";
+      return "⚠️ AI is temporarily busy. Please try again shortly.";
     }
 
-    // ✅ Final fallback
-    return "⚠️ AI service error. Please try again.";
+    // 🔁 Retry once (for network / random failure)
+    await delay(2000);
+
+    try {
+      return await callGemini(safePrompt);
+    } catch {
+      return "⚠️ AI is busy due to high traffic. Please try again in 5–10 seconds.";
+    }
   }
 }
 
 async function callGemini(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
   const fullPrompt = `${systemPrompt}
 
@@ -78,11 +82,11 @@ ${prompt}
       ],
       generationConfig: {
         temperature: 0.6,
-        maxOutputTokens: 1200
+        maxOutputTokens: 800
       }
     },
     {
-      timeout: 60000 // 🔥 increase timeout
+      timeout: 60000 // ✅ FIXED
     }
   );
 
