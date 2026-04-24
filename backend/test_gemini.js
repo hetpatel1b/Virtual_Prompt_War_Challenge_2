@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-const API_KEY = "AIzaSyDEyjBDRfQerncRTkZnljpTZ8oINeSgCFA";
+const API_KEY = *;
 const MODEL = "gemini-2.5-flash";
 
 async function testGemini() {
