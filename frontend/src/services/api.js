@@ -35,7 +35,11 @@ client.interceptors.response.use(
 
     // Surface rate-limit errors clearly
     if (err.response.status === 429) {
-      return Promise.reject(new Error('Too many requests. Please wait a moment before trying again.'));
+      return Promise.reject(new Error('Too many users. Please wait a moment before trying again.'));
+    }
+    
+    if (err.response.status === 503) {
+      return Promise.reject(new Error('AI busy. Please try again later.'));
     }
 
     const msg = err.response?.data?.error?.message || err.message || 'Something went wrong';
