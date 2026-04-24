@@ -48,7 +48,12 @@ async function sendMessage(req, res, next) {
       console.error("Gemini API error:", status, err.message);
 
       // Fallback to demo service instead of returning an error
-      const demoResponse = demoService.getResponse(message);
+      // ONLY use demo if Gemini NEVER worked
+      if (!API_KEY) {
+        const demoResponse = demoService.getResponse(message);
+        reply = formatDemoResponse(demoResponse);
+        source = 'fallback';
+      }
       if (demoResponse) {
         // Format demo response as readable text
         reply = formatDemoResponse(demoResponse);
@@ -56,16 +61,26 @@ async function sendMessage(req, res, next) {
         console.log("FALLBACK TRIGGERED: Using demo response");
       } else {
         // Only return error if fallback also fails
-        if (status === 429) {
-          return res.status(429).json({
-            success: false,
-            error: {
-              code: 'RATE_LIMIT',
-              message: 'Too many users. Please wait a moment and try again.'
-            }
+        if (status === 429 || status === 503) {
+          console.log("Gemini temporary failure — retrying once...");
+
+          try {
+            // retry once after delay
+            await new Promise(res => setTimeout(res, 2500));
+            reply = await geminiService.generateResponse(message);
+            source = 'gemini-retry';
+          } catch {
+            // final fallback (but still SUCCESS response)
+            reply = "⚠️ AI is currently busy. Please try again in a few seconds.";
+            source = 'system-message';
+          }
+
+          return res.json({
+            success: true,
+            data: { reply, source }
           });
         }
-        
+
         if (status === 503) {
           return res.status(503).json({
             success: false,

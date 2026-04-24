@@ -113,8 +113,14 @@ async function rateGuardedCall(prompt) {
 
 // ─── Raw Gemini API Call ───────────────────────────────────
 async function callGemini(prompt) {
+
+  if (!API_KEY) {
+    console.error("❌ Gemini API key is missing");
+    throw new Error("Missing Gemini API key");
+  }
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-  
+
   console.log(`CALLING GEMINI`);
   console.log(`API URL: ${url.replace(API_KEY, 'HIDDEN_KEY')}`);
 
@@ -139,7 +145,7 @@ async function callGemini(prompt) {
         timeout: 60000
       }
     );
-    
+
     console.log(`GEMINI RESPONSE RECEIVED`);
 
     const parts = response.data?.candidates?.[0]?.content?.parts || [];
