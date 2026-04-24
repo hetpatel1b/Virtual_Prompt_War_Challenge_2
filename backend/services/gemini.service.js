@@ -3,7 +3,9 @@
 const axios = require("axios");
 
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-pro";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+console.log(`[Gemini] Initialized — model=${MODEL}, keyPrefix=${API_KEY ? API_KEY.substring(0, 10) + '...' : 'MISSING'}`);
 
 const systemPrompt = `
 You are an expert Indian election educator.
