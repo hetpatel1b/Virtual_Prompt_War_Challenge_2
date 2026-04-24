@@ -114,38 +114,48 @@ async function rateGuardedCall(prompt) {
 // ─── Raw Gemini API Call ───────────────────────────────────
 async function callGemini(prompt) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
+  
+  console.log(`CALLING GEMINI`);
+  console.log(`API URL: ${url.replace(API_KEY, 'HIDDEN_KEY')}`);
 
   const fullPrompt = `${systemPrompt}\n\nUser Question:\n${prompt}\n`;
 
-  const response = await axios.post(
-    url,
-    {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: fullPrompt }]
+  try {
+    const response = await axios.post(
+      url,
+      {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: fullPrompt }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.6,
+          maxOutputTokens: 1200
         }
-      ],
-      generationConfig: {
-        temperature: 0.6,
-        maxOutputTokens: 1200
+      },
+      {
+        timeout: 60000
       }
-    },
-    {
-      timeout: 60000
-    }
-  );
+    );
+    
+    console.log(`GEMINI RESPONSE RECEIVED`);
 
-  const parts = response.data?.candidates?.[0]?.content?.parts || [];
+    const parts = response.data?.candidates?.[0]?.content?.parts || [];
 
-  const text = parts
-    .map(p => p.text || "")
-    .join("")
-    .trim();
+    const text = parts
+      .map(p => p.text || "")
+      .join("")
+      .trim();
 
-  if (!text) throw new Error("Empty response from Gemini");
+    if (!text) throw new Error("Empty response from Gemini");
 
-  return text;
+    return text;
+  } catch (err) {
+    console.error(`GEMINI CALL FAILED: ${err.message}`);
+    throw err;
+  }
 }
 
 module.exports = { generateResponse };
