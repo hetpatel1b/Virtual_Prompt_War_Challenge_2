@@ -32,7 +32,7 @@ async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
 
   // ✅ Strong validation
-  if (!safePrompt || safePrompt.length < 10) {
+  if (!safePrompt || safePrompt.length < 5) {
     return "Please ask a meaningful question about elections.";
   }
 
@@ -82,7 +82,7 @@ ${prompt}
       ],
       generationConfig: {
         temperature: 0.6,
-        maxOutputTokens: 800
+        maxOutputTokens: 900
       }
     },
     {
@@ -90,8 +90,12 @@ ${prompt}
     }
   );
 
-  const text =
-    response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const parts = response.data?.candidates?.[0]?.content?.parts || [];
+
+  const text = parts
+    .map(p => p.text || "")
+    .join("")
+    .trim();
 
   if (!text) throw new Error("Empty response");
 
