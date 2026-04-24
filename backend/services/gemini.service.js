@@ -1,26 +1,22 @@
 const axios = require("axios");
 
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash"; // ✅ FIXED
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-pro";
 
 const systemPrompt = `
 You are an expert Indian election educator.
 
-Always respond in a detailed, structured format.
+IMPORTANT:
+- Always complete the full answer
+- NEVER stop mid-sentence
+- Minimum 300–500 words
 
-Rules:
-- Minimum 300 words
-- Use headings (##)
-- Use bullet points
-- Give step-by-step explanation
-- Include real India context (EVM, Election Commission, Lok Sabha)
-- Use clear formatting (markdown)
+Use:
+## Headings
+- Bullet points
+- Step-by-step explanation
 
-Format:
-## Overview
-## Types / Steps
-## Important Notes
-## Final Summary
+Finish properly with a conclusion.
 `;
 
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -31,18 +27,29 @@ const sanitizePrompt = (p) =>
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
 
-  // ✅ Strong validation
+  // ✅ validation FIRST
   if (!safePrompt || safePrompt.length < 5) {
     return "Please ask a meaningful question about elections.";
   }
 
   try {
-    return await callGemini(safePrompt);
+    // 🔥 small delay to avoid rate limit
+    await delay(1200);
+
+    let response = await callGemini(safePrompt);
+
+    // 🔁 retry if response too short
+    if (!response || response.length < 200) {
+      await delay(1500);
+      response = await callGemini(safePrompt);
+    }
+
+    return response;
+
   } catch (err) {
     const status = err.response?.status;
     console.log("Gemini error status:", status);
 
-    // ✅ Handle specific errors FIRST
     if (status === 429) {
       return "⚠️ Too many users right now. Please wait a few seconds.";
     }
@@ -51,14 +58,7 @@ async function generateResponse(prompt) {
       return "⚠️ AI is temporarily busy. Please try again shortly.";
     }
 
-    // 🔁 Retry once (for network / random failure)
-    await delay(2000);
-
-    try {
-      return await callGemini(safePrompt);
-    } catch {
-      return "⚠️ AI is busy due to high traffic. Please try again in 5–10 seconds.";
-    }
+    return "⚠️ AI service error. Please try again.";
   }
 }
 
@@ -82,11 +82,11 @@ ${prompt}
       ],
       generationConfig: {
         temperature: 0.6,
-        maxOutputTokens: 900
+        maxOutputTokens: 1200
       }
     },
     {
-      timeout: 60000 // ✅ FIXED
+      timeout: 60000
     }
   );
 
