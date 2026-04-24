@@ -65,54 +65,45 @@ async function sendMessage(req, res, next) {
  * Simulate an election scenario step-by-step.
  */
 async function simulateScenario(req, res) {
-  console.log("SCENARIO INPUT:", req.body);
   try {
-    const scenario = req.body?.scenario?.trim();
+    const scenario = req.body.scenario || req.body.message;
 
-    if (!scenario || scenario.trim().length < 5) {
+    if (!scenario) {
       return res.json({
         success: true,
-        data: { reply: "Please enter a proper scenario." }
+        data: { reply: "Please enter a valid scenario." }
       });
     }
 
     const prompt = `
 You are an expert in Indian elections.
 
-Explain this scenario in a structured and detailed way.
+Explain in structured format:
 
-Include:
-- Legal process
-- Constitutional rules
-- Step-by-step what happens
-- Final outcome
-
-Use headings and bullet points.
+## Situation
+## Legal Rules
+## Step-by-step Process
+## Final Outcome
 
 Scenario:
 ${scenario}
 `;
 
-    let reply;
-
-    try {
-      reply = await geminiService.generateResponse(prompt);
-    } catch (e) {
-      console.error("Gemini Scenario Error:", e.message);
-      reply = "AI is temporarily busy. Please try again.";
-    }
+    const reply = await geminiService.generateResponse(prompt);
 
     return res.json({
       success: true,
-      data: { reply }
+      data: { reply }   // ✅ IMPORTANT
     });
 
   } catch (err) {
     console.error("SCENARIO ERROR:", err);
 
     return res.json({
-      success: true,
-      data: { reply: "Unable to process. Please try again." }
+      success: true,   // ✅ NEVER false
+      data: {
+        reply: "⚠️ Unable to process scenario right now. Please try again."
+      }
     });
   }
 }
