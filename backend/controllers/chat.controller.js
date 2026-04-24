@@ -53,7 +53,7 @@ async function sendMessage(req, res, next) {
         // Format demo response as readable text
         reply = formatDemoResponse(demoResponse);
         source = 'fallback';
-        console.log("[Chat] Using demo fallback response");
+        console.log("FALLBACK TRIGGERED: Using demo response");
       } else {
         // Only return error if fallback also fails
         if (status === 429) {
@@ -61,7 +61,17 @@ async function sendMessage(req, res, next) {
             success: false,
             error: {
               code: 'RATE_LIMIT',
-              message: 'AI service is busy. Please wait a moment and try again.'
+              message: 'Too many users. Please wait a moment and try again.'
+            }
+          });
+        }
+        
+        if (status === 503) {
+          return res.status(503).json({
+            success: false,
+            error: {
+              code: 'SERVICE_UNAVAILABLE',
+              message: 'AI busy. Please try again later.'
             }
           });
         }
@@ -178,14 +188,24 @@ ${scenario}
       const demoScenario = demoService.getScenarioResponse(scenario);
       if (demoScenario) {
         reply = formatScenarioResponse(demoScenario);
-        console.log("[Scenario] Using demo fallback response");
+        console.log("FALLBACK TRIGGERED: Using demo scenario response");
       } else {
         if (status === 429) {
           return res.status(429).json({
             success: false,
             error: {
               code: 'RATE_LIMIT',
-              message: 'AI service is busy. Please wait a moment and try again.'
+              message: 'Too many users. Please wait a moment and try again.'
+            }
+          });
+        }
+
+        if (status === 503) {
+          return res.status(503).json({
+            success: false,
+            error: {
+              code: 'SERVICE_UNAVAILABLE',
+              message: 'AI busy. Please try again later.'
             }
           });
         }
