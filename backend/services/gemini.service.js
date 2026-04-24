@@ -154,6 +154,9 @@ async function callGemini(prompt) {
     return text;
   } catch (err) {
     console.error(`GEMINI CALL FAILED: ${err.message}`);
+    if (err.response?.data) {
+      console.error(`GEMINI ERROR DATA: ${JSON.stringify(err.response.data)}`);
+    }
     throw err;
   }
 }
