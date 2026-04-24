@@ -3,6 +3,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { sendChatMessage } from '../services/api';
 
+// Minimum gap between sends (debounce / cooldown)
+const SEND_COOLDOWN_MS = 2000;
+
 export function useChat() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -10,11 +13,18 @@ export function useChat() {
   const idRef = useRef(0);
   const isRequestActiveRef = useRef(false);
   const abortRef = useRef(null);
+  const lastSendTimeRef = useRef(0);
 
   const send = useCallback(async (text) => {
     // Hard lock — only ONE request at a time, period.
     if (isRequestActiveRef.current) return;
+
+    // Debounce — enforce cooldown between sends
+    const now = Date.now();
+    if (now - lastSendTimeRef.current < SEND_COOLDOWN_MS) return;
+
     isRequestActiveRef.current = true;
+    lastSendTimeRef.current = now;
 
     // Abort any previously lingering request (e.g. StrictMode remount)
     if (abortRef.current) {

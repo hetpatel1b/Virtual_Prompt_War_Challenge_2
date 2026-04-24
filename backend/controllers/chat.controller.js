@@ -6,7 +6,8 @@
  *   - simulateScenario: Election scenario simulation
  *   - getSuggestions: Curated suggested questions
  *
- * Production-safe: Returns proper HTTP status codes for errors.
+ * Production-safe: Uses Gemini with demo-service fallback.
+ * Returns proper HTTP status codes for errors.
  */
 
 const geminiService = require('../services/gemini.service');
@@ -28,7 +29,9 @@ async function sendMessage(req, res, next) {
   try {
     const { message } = req.body;
     const userId = req.user?.uid || 'anonymous';
-    const cacheKey = `chat_${userId}_${Buffer.from(message || '').toString('base64').substring(0, 20)}`;
+
+    // Use normalized cache key (shared across users for same question)
+    const cacheKey = cacheService.generateKey(message, 'chat');
 
     const cachedReply = cacheService.get(cacheKey);
     if (cachedReply) {
@@ -36,48 +39,50 @@ async function sendMessage(req, res, next) {
     }
 
     let reply;
+    let source = 'gemini';
+
     try {
       reply = await geminiService.generateResponse(message);
     } catch (err) {
       const status = err.response?.status;
       console.error("Gemini API error:", status, err.message);
 
-      if (status === 429) {
-        return res.status(429).json({
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'AI service is busy. Please wait a moment and try again.'
-          }
-        });
-      }
-
-      if (status === 503) {
-        return res.status(503).json({
-          success: false,
-          error: {
-            code: 'SERVICE_UNAVAILABLE',
-            message: 'AI service is temporarily unavailable. Please try again shortly.'
-          }
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'AI_ERROR',
-          message: 'Failed to generate response. Please try again.'
+      // Fallback to demo service instead of returning an error
+      const demoResponse = demoService.getResponse(message);
+      if (demoResponse) {
+        // Format demo response as readable text
+        reply = formatDemoResponse(demoResponse);
+        source = 'fallback';
+        console.log("[Chat] Using demo fallback response");
+      } else {
+        // Only return error if fallback also fails
+        if (status === 429) {
+          return res.status(429).json({
+            success: false,
+            error: {
+              code: 'RATE_LIMIT',
+              message: 'AI service is busy. Please wait a moment and try again.'
+            }
+          });
         }
-      });
+
+        return res.status(500).json({
+          success: false,
+          error: {
+            code: 'AI_ERROR',
+            message: 'Failed to generate response. Please try again.'
+          }
+        });
+      }
     }
 
-    // Cache and Store (Non-blocking)
-    cacheService.set(cacheKey, reply, 300); // cache for 5 minutes
+    // Cache for 5 minutes (shared across users)
+    cacheService.set(cacheKey, reply, 300);
     firebaseService.storeChatEntry(userId, message, { summary: reply }).catch(() => { });
 
     return res.json({
       success: true,
-      data: { reply }
+      data: { reply, source }
     });
 
   } catch (err) {
@@ -91,6 +96,46 @@ async function sendMessage(req, res, next) {
       }
     });
   }
+}
+
+/**
+ * Format a demo service response object into a readable markdown string.
+ */
+function formatDemoResponse(demo) {
+  let text = '';
+
+  if (demo.summary) {
+    text += `${demo.summary}\n\n`;
+  }
+
+  if (demo.steps && demo.steps.length > 0) {
+    text += `## Steps\n\n`;
+    demo.steps.forEach((s, i) => {
+      text += `${i + 1}. ${s}\n`;
+    });
+    text += '\n';
+  }
+
+  if (demo.bullets && demo.bullets.length > 0) {
+    text += `## Key Points\n\n`;
+    demo.bullets.forEach(b => {
+      text += `- ${b}\n`;
+    });
+    text += '\n';
+  }
+
+  if (demo.examples && demo.examples.length > 0) {
+    text += `## Examples\n\n`;
+    demo.examples.forEach(e => {
+      text += `> ${e}\n\n`;
+    });
+  }
+
+  if (demo.relatedTopics && demo.relatedTopics.length > 0) {
+    text += `**Related Topics:** ${demo.relatedTopics.join(', ')}\n`;
+  }
+
+  return text.trim() || 'I can help you understand elections, voting, and democracy in India. Please ask a specific question!';
 }
 
 /**
@@ -127,23 +172,31 @@ ${scenario}
       reply = await geminiService.generateResponse(prompt);
     } catch (err) {
       const status = err.response?.status;
+      console.error("Scenario Gemini error:", status, err.message);
 
-      if (status === 429) {
-        return res.status(429).json({
-          success: false,
-          error: {
-            code: 'RATE_LIMIT',
-            message: 'AI service is busy. Please wait a moment and try again.'
+      // Fallback to demo scenario service
+      const demoScenario = demoService.getScenarioResponse(scenario);
+      if (demoScenario) {
+        reply = formatScenarioResponse(demoScenario);
+        console.log("[Scenario] Using demo fallback response");
+      } else {
+        if (status === 429) {
+          return res.status(429).json({
+            success: false,
+            error: {
+              code: 'RATE_LIMIT',
+              message: 'AI service is busy. Please wait a moment and try again.'
+            }
+          });
+        }
+
+        return res.json({
+          success: true,
+          data: {
+            reply: "⚠️ Unable to process scenario right now. Please try again."
           }
         });
       }
-
-      return res.json({
-        success: true,
-        data: {
-          reply: "⚠️ Unable to process scenario right now. Please try again."
-        }
-      });
     }
 
     return res.json({
@@ -162,6 +215,43 @@ ${scenario}
     });
   }
 }
+
+/**
+ * Format a demo scenario response into readable markdown.
+ */
+function formatScenarioResponse(demo) {
+  let text = '';
+
+  if (demo.scenario) {
+    text += `## Situation\n\n${demo.scenario}\n\n`;
+  }
+
+  if (demo.analysis) {
+    text += `## Analysis\n\n${demo.analysis}\n\n`;
+  }
+
+  if (demo.steps && demo.steps.length > 0) {
+    text += `## Step-by-step Process\n\n`;
+    demo.steps.forEach(s => {
+      text += `**Step ${s.step}: ${s.title}**\n${s.description}\n\n`;
+    });
+  }
+
+  if (demo.outcome) {
+    text += `## Final Outcome\n\n${demo.outcome}\n\n`;
+  }
+
+  if (demo.constitutionalBasis) {
+    text += `## Legal/Constitutional Basis\n\n${demo.constitutionalBasis}\n\n`;
+  }
+
+  if (demo.historicalPrecedent) {
+    text += `## Historical Precedent\n\n${demo.historicalPrecedent}\n`;
+  }
+
+  return text.trim() || "⚠️ Unable to process scenario right now. Please try again.";
+}
+
 /**
  * GET /api/chat/suggestions
  * Get curated suggested questions for the chat interface.
