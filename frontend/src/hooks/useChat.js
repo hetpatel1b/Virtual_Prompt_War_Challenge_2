@@ -62,7 +62,7 @@ export function useChat() {
       // Ignore abort errors
       if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
 
-      console.warn("Chat error:", err.message);
+      setError(err.message);
 
       const errMsg = {
         id: ++idRef.current,
