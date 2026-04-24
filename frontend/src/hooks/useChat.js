@@ -13,24 +13,40 @@ export function useChat() {
     setIsLoading(true);
     setError(null);
 
+    const queueMsgId = ++idRef.current;
+    const queueTimer = setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: queueMsgId,
+          role: 'ai',
+          content: '⏳ Processing your request, please wait...',
+          timestamp: Date.now(),
+          isTemporary: true
+        }
+      ]);
+    }, 2500);
+
     try {
       const responseText = await sendChatMessage(text);
+      clearTimeout(queueTimer);
+
       const response = responseText ?? 'No response received. Please try again.';
-      const cached = false;
-      const fallback = false;
-      const source = '';
       const aiMsg = {
         id: ++idRef.current,
         role: 'ai',
         content: response,
-        cached,
-        fallback,
-        source,
+        cached: false,
+        fallback: false,
+        source: '',
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, aiMsg]);
+
+      setMessages((prev) => [...prev.filter(m => m.id !== queueMsgId), aiMsg]);
     } catch (err) {
+      clearTimeout(queueTimer);
       setError(err.message);
+
       const errMsg = {
         id: ++idRef.current,
         role: 'ai',
@@ -44,7 +60,8 @@ export function useChat() {
         isError: true,
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, errMsg]);
+
+      setMessages((prev) => [...prev.filter(m => m.id !== queueMsgId), errMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -57,4 +74,3 @@ export function useChat() {
 
   return { messages, isLoading, error, send, clearChat };
 }
-

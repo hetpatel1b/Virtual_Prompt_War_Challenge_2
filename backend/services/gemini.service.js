@@ -24,25 +24,39 @@ const delay = (ms) => new Promise(res => setTimeout(res, ms));
 const sanitizePrompt = (p) =>
   typeof p === "string" ? p.trim().substring(0, 1000) : "";
 
+const requestQueue = [];
+let isProcessing = false;
+
+async function processQueue() {
+  if (isProcessing || requestQueue.length === 0) return;
+  isProcessing = true;
+
+  const { prompt, resolve, reject } = requestQueue.shift();
+
+  try {
+    const response = await callGemini(prompt);
+    resolve(response);
+  } catch (err) {
+    reject(err);
+  } finally {
+    await delay(2500); 
+    isProcessing = false;
+    processQueue(); 
+  }
+}
+
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
 
-  // ✅ validation FIRST
   if (!safePrompt || safePrompt.length < 5) {
     return "Please ask a meaningful question about elections.";
   }
 
   try {
-    // 🔥 small delay to avoid rate limit
-    await delay(1200);
-
-    let response = await callGemini(safePrompt);
-
-    // 🔁 retry if response too short
-    if (!response || response.length < 200) {
-      await delay(1500);
-      response = await callGemini(safePrompt);
-    }
+    const response = await new Promise((resolve, reject) => {
+      requestQueue.push({ prompt: safePrompt, resolve, reject });
+      processQueue();
+    });
 
     return response;
 
@@ -65,11 +79,7 @@ async function generateResponse(prompt) {
 async function callGemini(prompt) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 
-  const fullPrompt = `${systemPrompt}
-
-User Question:
-${prompt}
-`;
+  const fullPrompt = `${systemPrompt}\n\nUser Question:\n${prompt}\n`;
 
   const response = await axios.post(
     url,
