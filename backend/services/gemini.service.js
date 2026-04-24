@@ -1,3 +1,5 @@
+// backend/services/gemini.service.js
+
 const axios = require("axios");
 
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
@@ -33,11 +35,11 @@ async function generateResponse(prompt) {
     return "Please ask a meaningful question about elections.";
   }
 
-  if (Date.now() - lastRequestTime < 3000) {
+  const now = Date.now();
+  if (now - lastRequestTime < 3000) {
     return "⚠️ Please wait a few seconds before sending another request.";
   }
-
-  lastRequestTime = Date.now();
+  lastRequestTime = now;
 
   try {
     const response = await callGemini(safePrompt);
