@@ -24,26 +24,7 @@ const delay = (ms) => new Promise(res => setTimeout(res, ms));
 const sanitizePrompt = (p) =>
   typeof p === "string" ? p.trim().substring(0, 1000) : "";
 
-const requestQueue = [];
-let isProcessing = false;
-
-async function processQueue() {
-  if (isProcessing || requestQueue.length === 0) return;
-  isProcessing = true;
-
-  const { prompt, resolve, reject } = requestQueue.shift();
-
-  try {
-    const response = await callGemini(prompt);
-    resolve(response);
-  } catch (err) {
-    reject(err);
-  } finally {
-    await delay(2500); 
-    isProcessing = false;
-    processQueue(); 
-  }
-}
+let lastRequestTime = 0;
 
 async function generateResponse(prompt) {
   const safePrompt = sanitizePrompt(prompt);
@@ -52,14 +33,15 @@ async function generateResponse(prompt) {
     return "Please ask a meaningful question about elections.";
   }
 
+  if (Date.now() - lastRequestTime < 3000) {
+    return "⚠️ Please wait a few seconds before sending another request.";
+  }
+
+  lastRequestTime = Date.now();
+
   try {
-    const response = await new Promise((resolve, reject) => {
-      requestQueue.push({ prompt: safePrompt, resolve, reject });
-      processQueue();
-    });
-
+    const response = await callGemini(safePrompt);
     return response;
-
   } catch (err) {
     const status = err.response?.status;
     console.log("Gemini error status:", status);
