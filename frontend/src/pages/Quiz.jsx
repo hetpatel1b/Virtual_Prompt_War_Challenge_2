@@ -13,102 +13,117 @@ export default function Quiz() {
   const { isAuthenticated, signIn } = useAuth();
   const quiz = useQuiz();
 
-  /* ── Start screen ──────────────────────────────────── */
+  /* ── START SCREEN ─────────────────────────────────── */
   if (quiz.phase === quiz.PHASES.START) {
     return (
       <div className="max-w-2xl mx-auto space-y-8 relative">
-        <div className="blob w-72 h-72 bg-amber-500 -top-20 -right-40" />
-
         <div className="relative z-10 text-center space-y-4 pt-4">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mx-auto shadow-2xl shadow-amber-500/25">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mx-auto shadow-2xl">
             <Trophy size={32} className="text-white" />
           </div>
-          <h2 className="text-3xl font-heading font-extrabold text-[var(--color-text)]">Election Quiz Challenge</h2>
-          <p className="text-[var(--color-text-muted)] max-w-md mx-auto">Test your knowledge of India's election process across 6 categories and 3 difficulty levels.</p>
+          <h2 className="text-3xl font-heading font-extrabold">
+            Election Quiz Challenge
+          </h2>
+          <p className="text-sm text-gray-500">
+            Test your knowledge of India's election system 🚀
+          </p>
         </div>
 
-        <div className="relative z-10 grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Easy', desc: 'Fundamentals', icon: Sparkles, gradient: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-500/15' },
-            { label: 'Medium', desc: 'Intermediate', icon: Target, gradient: 'from-amber-500 to-orange-500', shadow: 'shadow-amber-500/15' },
-            { label: 'Hard', desc: 'Expert Level', icon: Zap, gradient: 'from-red-500 to-rose-500', shadow: 'shadow-red-500/15' },
+            { label: 'Easy', icon: Sparkles },
+            { label: 'Medium', icon: Target },
+            { label: 'Hard', icon: Zap },
           ].map((d) => (
-            <Card key={d.label} variant="glass" className="text-center py-5">
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${d.gradient} flex items-center justify-center mx-auto mb-2.5 shadow-lg ${d.shadow}`}>
-                <d.icon size={18} className="text-white" />
-              </div>
-              <p className="font-heading font-bold text-sm text-[var(--color-text)]">{d.label}</p>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">{d.desc}</p>
+            <Card key={d.label} className="text-center py-5">
+              <d.icon size={20} className="mx-auto mb-2" />
+              <p className="font-bold">{d.label}</p>
             </Card>
           ))}
         </div>
 
-        <div className="relative z-10 flex flex-col items-center gap-3">
+        <div className="flex justify-center gap-3">
+          <Button
+            onClick={() => quiz.startQuiz({ count: 10 })}
+            loading={quiz.isLoading}
+            icon={Play}
+          >
+            Start Quiz
+          </Button>
+
           {!isAuthenticated && (
-            <p className="text-xs text-[var(--color-text-muted)]">Sign in to save your score to the leaderboard</p>
-          )}
-          <div className="flex gap-3">
-            <Button onClick={() => quiz.startQuiz({ count: 10 })} loading={quiz.isLoading} icon={Play} variant="glow" size="lg">
-              Start Quiz
+            <Button variant="secondary" onClick={() => signIn('google')}>
+              Sign In
             </Button>
-            {!isAuthenticated && (
-              <Button variant="secondary" size="lg" onClick={() => signIn('google')}>Sign In First</Button>
-            )}
-          </div>
+          )}
         </div>
 
-        {quiz.error && <p className="relative z-10 text-center text-sm text-red-500">{quiz.error}</p>}
+        {quiz.error && (
+          <p className="text-center text-red-500 text-sm">{quiz.error}</p>
+        )}
 
-        <div className="relative z-10">
-          <Leaderboard />
-        </div>
+        <Leaderboard />
       </div>
     );
   }
 
-  /* ── Active quiz ───────────────────────────────────── */
+  /* ── ACTIVE QUIZ ─────────────────────────────────── */
   if (quiz.phase === quiz.PHASES.ACTIVE) {
     const q = quiz.currentQuestion;
-    if (!q) return <LoadingSpinner text="Loading question…" />;
+    if (!q) return <LoadingSpinner text="Loading..." />;
+
+    const currentAnswer = quiz.answers[quiz.currentIndex];
 
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-[var(--color-text-muted)] tabular-nums">
-            Question {quiz.currentIndex + 1} <span className="text-[var(--color-text-muted)]/50">/ {quiz.questions.length}</span>
+        {/* Progress */}
+        <div className="flex justify-between text-sm">
+          <p>
+            Question {quiz.currentIndex + 1} / {quiz.questions.length}
           </p>
-          <span className="text-xs font-medium text-primary-600 dark:text-primary-400 tabular-nums">
-            {Math.round(quiz.progress)}% complete
-          </span>
+          <p>{Math.round(quiz.progress)}%</p>
         </div>
-        <ProgressBar value={quiz.currentIndex + 1} max={quiz.questions.length} showLabel={false} size="sm" />
 
-        <QuestionCard
-          question={q}
-          selectedOption={quiz.answers[quiz.currentIndex]?.selectedOption ?? null}
-          onSelect={(opt) => quiz.selectAnswer(opt)}
-          feedback={null}
+        <ProgressBar
+          value={quiz.currentIndex + 1}
+          max={quiz.questions.length}
         />
 
+        {/* Question */}
+        <QuestionCard
+          question={q}
+          selectedOption={currentAnswer?.selectedOption ?? null}
+          onSelect={(opt) => quiz.selectAnswer(opt)}
+          feedback={
+            currentAnswer
+              ? {
+                correctOption: q.correctOption,
+                isCorrect:
+                  currentAnswer.selectedOption === q.correctOption,
+                explanation: q.explanation || "No explanation available"
+              }
+              : null
+          }
+        />
 
-        {quiz.answers[quiz.currentIndex] && (
-          <div className="flex justify-end animate-fade-up" style={{ animationDuration: '0.3s' }}>
+        {/* Buttons */}
+        {currentAnswer && (
+          <div className="flex justify-end">
             {quiz.isLastQuestion ? (
               <Button
-                onClick={() => {
+                onClick={async () => {
                   if (!isAuthenticated) {
                     alert("Please login first");
                     signIn('google');
                     return;
                   }
 
-                  quiz.submitQuiz();
+                  await quiz.submitQuiz(); // ✅ FIXED
                 }}
                 loading={quiz.isLoading}
                 icon={ArrowRight}
-                variant="glow"
               >
-                {isAuthenticated ? 'Submit & See Results' : 'See Results'}
+                Submit & See Results
               </Button>
             ) : (
               <Button onClick={quiz.nextQuestion}>
@@ -121,15 +136,14 @@ export default function Quiz() {
     );
   }
 
-  /* ── Results ───────────────────────────────────────── */
+  /* ── RESULTS ─────────────────────────────────────── */
   if (quiz.phase === quiz.PHASES.RESULTS) {
     return (
-      <div className="max-w-2xl mx-auto relative">
-        <div className="blob w-72 h-72 bg-primary-500 -top-20 -right-40" />
-        <div className="blob w-48 h-48 bg-emerald-500 bottom-0 -left-20" style={{ animationDelay: '3s' }} />
-        <div className="relative z-10">
-          <ResultsSummary results={quiz.results} onRetry={quiz.retryQuiz} />
-        </div>
+      <div className="max-w-2xl mx-auto">
+        <ResultsSummary
+          results={quiz.results}
+          onRetry={quiz.retryQuiz}
+        />
       </div>
     );
   }

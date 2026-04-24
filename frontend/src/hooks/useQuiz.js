@@ -29,6 +29,7 @@ export function useQuiz() {
     }
   }, []);
 
+  // FIX START — Store correctOption so feedback always has the correct answer index
   const selectAnswer = useCallback((selectedOption) => {
     if (phase !== PHASES.ACTIVE) return;
 
@@ -38,12 +39,14 @@ export function useQuiz() {
       const updated = [...prev];
       updated[currentIndex] = {
         questionId: q.id,
-        selectedOption
+        selectedOption,
+        correctOption: q.correctOption,  // 0-based index from API
       };
       return updated;
     });
 
   }, [phase, questions, currentIndex]);
+  // FIX END
   const nextQuestion = useCallback(() => {
     setCurrentIndex((prev) => {
       if (prev < questions.length - 1) {
@@ -53,11 +56,17 @@ export function useQuiz() {
     });
   }, [questions.length]);
 
+  // FIX START — Send only the fields the backend expects
   const submitQuiz = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await submitQuizAnswers(answers);
+      // Strip correctOption — backend only needs questionId + selectedOption
+      const payload = answers.map(({ questionId, selectedOption }) => ({
+        questionId,
+        selectedOption,
+      }));
+      const data = await submitQuizAnswers(payload);
       setResults(data);
       setPhase(PHASES.RESULTS);
     } catch (err) {
@@ -65,6 +74,7 @@ export function useQuiz() {
     } finally {
       setIsLoading(false);
     }
+  // FIX END
   }, [answers]);
 
   const retryQuiz = useCallback(() => {

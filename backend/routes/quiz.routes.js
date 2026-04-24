@@ -17,12 +17,14 @@ const router = Router();
 // Get questions — public
 router.get('/questions', validateQuizQuery, quizController.getQuestions);
 
-// Submit answers — requires authentication
+// FIX START — Added requireAuth so req.user.uid is available in controller
 router.post(
   '/submit',
+  requireAuth,
   validateQuizSubmission,
   quizController.submitQuiz
 );
+// FIX END
 
 // Leaderboard — public
 router.get('/leaderboard', quizController.getLeaderboard);

@@ -26,14 +26,19 @@ function getQuestions(req, res) {
     count: count ? parseInt(count, 10) : 10,
   });
 
-  // Strip correct answers and explanations before sending to client
+  // FIX START — Include correctOption and explanation so the frontend
+  // can show green/red highlights and explanations after answering.
+  // Server-side scoring in submitQuiz still validates independently.
   const safeQuestions = questions.map((q) => ({
     id: q.id,
     category: q.category,
     difficulty: q.difficulty,
     question: q.question,
     options: q.options,
+    correctOption: q.correctIndex,   // 0-based index
+    explanation: q.explanation || '',
   }));
+  // FIX END
 
   reqLogger.info('Quiz questions served', {
     count: safeQuestions.length,
